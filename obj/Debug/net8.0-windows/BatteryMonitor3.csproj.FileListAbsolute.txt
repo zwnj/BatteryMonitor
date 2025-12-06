@@ -58,6 +58,8 @@ C:/Users/yushin/source/repos/BatteryMonitor3/BatteryMonitor3/obj/Debug/net8.0-wi
 /mnt/c/Users/yushin/source/repos/BatteryMonitor3/BatteryMonitor3/obj/Debug/net8.0-windows/GeneratedInternalTypeHelper.g.cs
 C:/Users/yushin/source/repos/BatteryMonitor3/BatteryMonitor3/obj/Debug/net8.0-windows/PopupView.baml
 C:/Users/yushin/source/repos/BatteryMonitor3/BatteryMonitor3/obj/Debug/net8.0-windows/PopupView.g.cs
+C:/Users/yushin/source/repos/BatteryMonitor3/BatteryMonitor3/obj/Debug/net8.0-windows/GeneratedInternalTypeHelper.g.cs
+C:/Users/yushin/source/repos/BatteryMonitor3/BatteryMonitor3/obj/Debug/net8.0-windows/BatteryMonitor3_MarkupCompile.lref
 C:\Users\yushin\source\repos\BatteryMonitor3\BatteryMonitor3\bin\Debug\net8.0-windows\BatteryMonitor3.exe
 C:\Users\yushin\source\repos\BatteryMonitor3\BatteryMonitor3\bin\Debug\net8.0-windows\BatteryMonitor3.deps.json
 C:\Users\yushin\source\repos\BatteryMonitor3\BatteryMonitor3\bin\Debug\net8.0-windows\BatteryMonitor3.runtimeconfig.json
@@ -73,7 +75,9 @@ C:\Users\yushin\source\repos\BatteryMonitor3\BatteryMonitor3\obj\Debug\net8.0-wi
 C:\Users\yushin\source\repos\BatteryMonitor3\BatteryMonitor3\obj\Debug\net8.0-windows\MainWindow.g.cs
 C:\Users\yushin\source\repos\BatteryMonitor3\BatteryMonitor3\obj\Debug\net8.0-windows\PopupView.g.cs
 C:\Users\yushin\source\repos\BatteryMonitor3\BatteryMonitor3\obj\Debug\net8.0-windows\App.g.cs
+C:\Users\yushin\source\repos\BatteryMonitor3\BatteryMonitor3\obj\Debug\net8.0-windows\GeneratedInternalTypeHelper.g.cs
 C:\Users\yushin\source\repos\BatteryMonitor3\BatteryMonitor3\obj\Debug\net8.0-windows\BatteryMonitor3_MarkupCompile.cache
+C:\Users\yushin\source\repos\BatteryMonitor3\BatteryMonitor3\obj\Debug\net8.0-windows\BatteryMonitor3_MarkupCompile.lref
 C:\Users\yushin\source\repos\BatteryMonitor3\BatteryMonitor3\obj\Debug\net8.0-windows\App.baml
 C:\Users\yushin\source\repos\BatteryMonitor3\BatteryMonitor3\obj\Debug\net8.0-windows\BatteryMonitor3.g.resources
 C:\Users\yushin\source\repos\BatteryMonitor3\BatteryMonitor3\obj\Debug\net8.0-windows\BatteryMonitor3.GeneratedMSBuildEditorConfig.editorconfig
@@ -87,5 +91,3 @@ C:\Users\yushin\source\repos\BatteryMonitor3\BatteryMonitor3\obj\Debug\net8.0-wi
 C:\Users\yushin\source\repos\BatteryMonitor3\BatteryMonitor3\obj\Debug\net8.0-windows\BatteryMonitor3.pdb
 C:\Users\yushin\source\repos\BatteryMonitor3\BatteryMonitor3\obj\Debug\net8.0-windows\BatteryMonitor3.genruntimeconfig.cache
 C:\Users\yushin\source\repos\BatteryMonitor3\BatteryMonitor3\obj\Debug\net8.0-windows\ref\BatteryMonitor3.dll
-C:\Users\yushin\source\repos\BatteryMonitor3\BatteryMonitor3\obj\Debug\net8.0-windows\GeneratedInternalTypeHelper.g.cs
-C:\Users\yushin\source\repos\BatteryMonitor3\BatteryMonitor3\obj\Debug\net8.0-windows\BatteryMonitor3_MarkupCompile.lref
