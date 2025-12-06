@@ -14,7 +14,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("BatteryMonitor3")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+da039f8afb980ba624a593a836af7e0cdee0cee7")]
 [assembly: System.Reflection.AssemblyProductAttribute("BatteryMonitor3")]
 [assembly: System.Reflection.AssemblyTitleAttribute("BatteryMonitor3")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
