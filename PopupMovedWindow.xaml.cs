@@ -39,11 +39,5 @@ namespace BatteryMonitor3
                 this.DragMove();
             }
         }
-
-        private void Window_Deactivated(object sender, EventArgs e)
-        {
-            // Hide the window when it loses focus.
-            this.Hide();
-        }
     }
 }

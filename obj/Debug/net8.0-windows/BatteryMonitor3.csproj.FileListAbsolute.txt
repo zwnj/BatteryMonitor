@@ -56,6 +56,8 @@ C:/Users/yushin/source/repos/BatteryMonitor3/BatteryMonitor3/obj/Debug/net8.0-wi
 C:/Users/yushin/source/repos/BatteryMonitor3/BatteryMonitor3/obj/Debug/net8.0-windows/BatteryMonitor3_MarkupCompile.lref
 /mnt/c/Users/yushin/source/repos/BatteryMonitor3/BatteryMonitor3/obj/Debug/net8.0-windows/PopupMovedWindow.baml
 /mnt/c/Users/yushin/source/repos/BatteryMonitor3/BatteryMonitor3/obj/Debug/net8.0-windows/PopupMovedWindow.g.cs
+C:/Users/yushin/source/repos/BatteryMonitor3/BatteryMonitor3/obj/Debug/net8.0-windows/PopupMovedWindow.baml
+C:/Users/yushin/source/repos/BatteryMonitor3/BatteryMonitor3/obj/Debug/net8.0-windows/PopupMovedWindow.g.cs
 C:\Users\yushin\source\repos\BatteryMonitor3\BatteryMonitor3\bin\Debug\net8.0-windows\BatteryMonitor3.exe
 C:\Users\yushin\source\repos\BatteryMonitor3\BatteryMonitor3\bin\Debug\net8.0-windows\BatteryMonitor3.deps.json
 C:\Users\yushin\source\repos\BatteryMonitor3\BatteryMonitor3\bin\Debug\net8.0-windows\BatteryMonitor3.runtimeconfig.json

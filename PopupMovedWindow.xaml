@@ -11,7 +11,6 @@
         Background="Transparent"
         ShowInTaskbar="False"
         Topmost="True"
-        Deactivated="Window_Deactivated"
         SourceInitialized="Window_SourceInitialized"
         Closing="Window_Closing">
 
