@@ -54,7 +54,7 @@ namespace BatteryMonitor3
 
             if (data.IsCharging)
             {
-                StatusColor = Brushes.LightGreen;
+                StatusColor = System.Windows.Media.Brushes.LightGreen;
                 MainStatusText = "充電中";
                 SubStatusText = (voltageV > 0 && currentA > 0)
                     ? $"{powerW:F1}W ({voltageV:F1}V / {currentA:F1}A)"
@@ -62,7 +62,7 @@ namespace BatteryMonitor3
             }
             else
             {
-                StatusColor = Brushes.White;
+                StatusColor = System.Windows.Media.Brushes.White;
                 MainStatusText = "バッテリー使用中";
                 SubStatusText = (powerW > 0) ? $"消費: {powerW:F1}W" : "待機中";
             }
@@ -76,8 +76,8 @@ namespace BatteryMonitor3
             set { _batteryLevel = value; OnPropertyChanged(); }
         }
 
-        private Brush _statusColor = Brushes.White;
-        public Brush StatusColor
+        private System.Windows.Media.Brush _statusColor = System.Windows.Media.Brushes.White;
+        public System.Windows.Media.Brush StatusColor
         {
             get => _statusColor;
             set { _statusColor = value; OnPropertyChanged(); }

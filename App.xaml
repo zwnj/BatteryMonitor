@@ -9,10 +9,6 @@
                         PopupActivation="None"
                         ToolTipText="Battery Monitor">
             
-            <tb:TaskbarIcon.TrayPopup>
-                <local:PopupView />
-            </tb:TaskbarIcon.TrayPopup>
-
             <tb:TaskbarIcon.ContextMenu>
                 <ContextMenu>
                     <MenuItem Header="終了" />
