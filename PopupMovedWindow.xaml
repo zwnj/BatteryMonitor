@@ -12,7 +12,8 @@
         ShowInTaskbar="False"
         Topmost="True"
         SourceInitialized="Window_SourceInitialized"
-        Closing="Window_Closing">
+        Closing="Window_Closing"
+        Deactivated="Window_Deactivated">
 
     <Border Background="#1E1E1E" CornerRadius="12" BorderBrush="#333333" BorderThickness="1">
 

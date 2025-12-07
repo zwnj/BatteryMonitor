@@ -16,7 +16,7 @@ namespace BatteryMonitor3
         private DispatcherTimer? _showDelayTimer;
         private DispatcherTimer? _stateTimer; // Watchdog
         private DateTime _lastActivityTime = DateTime.MinValue;
-        private bool _isStickyMode = false;
+        private bool _isPinned = false;
 
         protected override void OnStartup(StartupEventArgs e)
         {
@@ -63,7 +63,7 @@ namespace BatteryMonitor3
             if (_popupWindow == null) return;
 
             _lastActivityTime = DateTime.Now;
-            if (!_popupWindow.IsVisible && !_isStickyMode)
+            if (!_popupWindow.IsVisible && !_isPinned)
             {
                 _showDelayTimer?.Start();
             }
@@ -75,16 +75,16 @@ namespace BatteryMonitor3
             
             _showDelayTimer?.Stop();
             
-            if (_popupWindow.IsVisible && _isStickyMode)
+            if (_popupWindow.IsVisible && _isPinned)
             {
-                // If it's visible and sticky, a click will hide it and un-stick it.
+                // If it's visible and pinned, a click will hide it and un-pin it.
                 _popupWindow.Hide();
-                _isStickyMode = false;
             }
             else
             {
-                // Otherwise, show it and make it sticky.
-                _isStickyMode = true;
+                // Otherwise, show it and make it pinned.
+                _isPinned = true;
+                _popupWindow.IsPinned = true;
                 _popupWindow.Show();
                 _popupWindow.Activate();
             }
@@ -97,7 +97,8 @@ namespace BatteryMonitor3
             {
                 if (_popupWindow != null && !_popupWindow.IsVisible)
                 {
-                    _isStickyMode = false; // This is a hover-show
+                    _isPinned = false; 
+                    _popupWindow.IsPinned = false;
                     _popupWindow.Show();
                     _popupWindow.Activate();
                 }
@@ -108,16 +109,17 @@ namespace BatteryMonitor3
         {
             if (_popupWindow != null && !_popupWindow.IsVisible)
             {
-                // When the window is hidden for any reason, reset the sticky mode.
-                _isStickyMode = false;
+                // When the window is hidden for any reason, reset the pinned state.
+                _isPinned = false;
+                _popupWindow.IsPinned = false;
             }
         }
 
         private void OnStateTimerTick(object? sender, EventArgs e)
         {
-            if (_isStickyMode || _popupWindow == null || !_popupWindow.IsVisible)
+            if (_isPinned || _popupWindow == null || !_popupWindow.IsVisible)
             {
-                return; // Don't run watchdog in sticky mode or if window is hidden
+                return; // Don't run watchdog in pinned mode or if window is hidden
             }
 
             bool isMouseOverPopup = _popupWindow.IsMouseOver;

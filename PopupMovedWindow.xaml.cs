@@ -7,6 +7,8 @@ namespace BatteryMonitor3
 {
     public partial class PopupMovedWindow : Window
     {
+        public bool IsPinned { get; set; } = false;
+
         public PopupMovedWindow()
         {
             InitializeComponent();
@@ -37,6 +39,14 @@ namespace BatteryMonitor3
             if (e.ButtonState == MouseButtonState.Pressed)
             {
                 this.DragMove();
+            }
+        }
+
+        private void Window_Deactivated(object sender, EventArgs e)
+        {
+            if (IsPinned)
+            {
+                this.Hide();
             }
         }
     }
