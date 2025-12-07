@@ -62,7 +62,7 @@ namespace BatteryMonitor3
         {
             if (_popupWindow == null) return;
 
-            _lastActivityTime = DateTime.Now;
+            _lastActivityTime = DateTime.Now; // Update activity time on any mouse movement over the tray
             if (!_popupWindow.IsVisible && !_isPinned)
             {
                 _showDelayTimer?.Start();
@@ -93,15 +93,12 @@ namespace BatteryMonitor3
         private void OnShowDelayTimerTick(object? sender, EventArgs e)
         {
             _showDelayTimer?.Stop();
-            if ((DateTime.Now - _lastActivityTime).TotalSeconds < 1.0)
+            if (_popupWindow != null && !_popupWindow.IsVisible)
             {
-                if (_popupWindow != null && !_popupWindow.IsVisible)
-                {
-                    _isPinned = false; 
-                    _popupWindow.IsPinned = false;
-                    _popupWindow.Show();
-                    _popupWindow.Activate();
-                }
+                _isPinned = false; 
+                _popupWindow.IsPinned = false;
+                _popupWindow.Show();
+                _popupWindow.Activate();
             }
         }
         
@@ -123,9 +120,11 @@ namespace BatteryMonitor3
             }
 
             bool isMouseOverPopup = _popupWindow.IsMouseOver;
-            bool isMouseOverIcon = (DateTime.Now - _lastActivityTime).TotalSeconds < 0.5;
+            // Heuristic check: Was the mouse over the tray icon recently?
+            // This prevents flicker when the mouse is static over the icon.
+            bool isMouseRecentlyOverIcon = (DateTime.Now - _lastActivityTime).TotalSeconds < 1.5;
 
-            if (!isMouseOverPopup && !isMouseOverIcon)
+            if (!isMouseOverPopup && !isMouseRecentlyOverIcon)
             {
                 _popupWindow.Hide();
             }
