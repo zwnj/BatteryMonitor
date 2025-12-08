@@ -10,6 +10,17 @@ namespace BatteryMonitor3
 {
     public partial class App : Application
     {
+        [System.Runtime.InteropServices.DllImport("user32.dll")]
+        [return: System.Runtime.InteropServices.MarshalAs(System.Runtime.InteropServices.UnmanagedType.Bool)]
+        private static extern bool GetCursorPos(out Win32Point lpPoint);
+
+        [System.Runtime.InteropServices.StructLayout(System.Runtime.InteropServices.LayoutKind.Sequential)]
+        private struct Win32Point
+        {
+            public int X;
+            public int Y;
+        }
+
         private TaskbarIcon? _notifyIcon;
         private MainWindow? _mainWindow;
         private BatteryViewModel? _batteryViewModel;
@@ -20,6 +31,8 @@ namespace BatteryMonitor3
 
         // --- Mode Flag ---
         private bool _isStickyMode = false;
+        private Win32Point _lastHoverPos;
+        private DateTime _lastMoveTime;
 
         protected override void OnStartup(StartupEventArgs e)
         {
@@ -73,6 +86,12 @@ namespace BatteryMonitor3
         private void MyNotifyIcon_TrayMouseMove(object? sender, RoutedEventArgs e)
         {
             _lastActivityTime = DateTime.Now;
+            _lastMoveTime = DateTime.Now;
+            if (GetCursorPos(out Win32Point pt))
+            {
+                _lastHoverPos = pt;
+            }
+
             if (_notifyIcon?.TrayPopupResolved is Popup popup && !popup.IsOpen && !_isStickyMode)
             {
                 if (_showDelayTimer != null && !_showDelayTimer.IsEnabled)
@@ -118,7 +137,37 @@ namespace BatteryMonitor3
             if (_notifyIcon?.TrayPopupResolved is not Popup popup || !popup.IsOpen) return;
 
             bool isMouseOverPopup = popup.IsMouseOver;
-            bool isMouseOverIcon = (DateTime.Now - _lastActivityTime).TotalSeconds < 1.0;
+            bool isMouseOverIcon = false; 
+
+            // Heuristic: If mouse hasn't moved far from the last "tray move" location, assume we are still hovering.
+            // Tray icons are small, so if we are within e.g. 20-30 pixels, likely still there.
+            if (GetCursorPos(out Win32Point currentPt))
+            {
+                double dx = currentPt.X - _lastHoverPos.X;
+                double dy = currentPt.Y - _lastHoverPos.Y;
+                double dist = Math.Sqrt(dx*dx + dy*dy);
+                
+                // If the mouse is static (dist very small) OR within a small radius and moved recently?
+                // Actually, if simply "static" is the goal:
+                // If the mouse hasn't moved much since the last 'TrayMouseMove', we consider it "over icon".
+                // BUT if the user moves OUT, the dist increases.
+                // The problem: TrayMouseMove only fires when over. So _lastHoverPos is always "over".
+                // So if Dist is small, we are likely still over.
+                isMouseOverIcon = dist < 20.0; 
+                
+                // Logic check:
+                // 1. User hovers -> TrayMouseMove fires -> _lastHoverPos updated. dist ~ 0.
+                // 2. User stops -> TrayMouseMove stops. Cursor static. dist ~ 0. -> isMouseOverIcon = true. Keep open.
+                // 3. User moves OUT -> Cursor moves. dist > 20. -> isMouseOverIcon = false. Close.
+            }
+
+            // Fallback to time if heuristic fails (e.g. extremely fast move)? 
+            // Or just combine:
+            if (!isMouseOverIcon)
+            {
+                 // Give a small grace period of 0.5s from last actual move event?
+                 if ((DateTime.Now - _lastMoveTime).TotalSeconds < 0.5) isMouseOverIcon = true;
+            }
 
             if (!isMouseOverPopup && !isMouseOverIcon)
             {
