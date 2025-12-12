@@ -2,6 +2,7 @@ using System;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using System.Windows.Media;
+using System.Windows.Input;
 
 namespace BatteryMonitor3
 {
@@ -14,7 +15,10 @@ namespace BatteryMonitor3
         public BatteryViewModel()
         {
             _service = new BatteryService();
+            TogglePinCommand = new RelayCommand(_ => IsPinned = !IsPinned);
         }
+
+        public ICommand TogglePinCommand { get; }
 
         private void OnPropertyChanged([CallerMemberName] string? name = null)
         {
@@ -123,6 +127,13 @@ namespace BatteryMonitor3
         {
             get => _health;
             set { _health = value; OnPropertyChanged(); }
+        }
+
+        private bool _isPinned = false;
+        public bool IsPinned
+        {
+            get => _isPinned;
+            set { _isPinned = value; OnPropertyChanged(); }
         }
     }
 }

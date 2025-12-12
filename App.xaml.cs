@@ -5,6 +5,7 @@ using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Input;
 using System.Windows.Threading;
+using System.Windows.Media;
 
 namespace BatteryMonitor3
 {
@@ -13,6 +14,10 @@ namespace BatteryMonitor3
         [System.Runtime.InteropServices.DllImport("user32.dll")]
         [return: System.Runtime.InteropServices.MarshalAs(System.Runtime.InteropServices.UnmanagedType.Bool)]
         private static extern bool GetCursorPos(out Win32Point lpPoint);
+
+        [System.Runtime.InteropServices.DllImport("user32.dll")]
+        [return: System.Runtime.InteropServices.MarshalAs(System.Runtime.InteropServices.UnmanagedType.Bool)]
+        private static extern bool SetForegroundWindow(IntPtr hWnd);
 
         [System.Runtime.InteropServices.StructLayout(System.Runtime.InteropServices.LayoutKind.Sequential)]
         private struct Win32Point
@@ -33,6 +38,10 @@ namespace BatteryMonitor3
         private bool _isStickyMode = false;
         private Win32Point _lastHoverPos;
         private DateTime _lastMoveTime;
+
+        // --- State Restoration ---
+        private bool _savedStickyMode = false;
+        private bool _savedStaysOpen = false;
 
         protected override void OnStartup(StartupEventArgs e)
         {
@@ -68,10 +77,69 @@ namespace BatteryMonitor3
 
             // Data updates
             _batteryViewModel.UpdateData();
+            _batteryViewModel.PropertyChanged += ViewModel_PropertyChanged;
+
             var updateTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
             updateTimer.Tick += (s, ev) => _batteryViewModel.UpdateData();
             updateTimer.Start();
         }
+
+        private void ViewModel_PropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+        {
+            if (e.PropertyName == nameof(BatteryViewModel.IsPinned))
+            {
+                if (_batteryViewModel?.IsPinned == true)
+                {
+                    // Save current state
+                    _savedStickyMode = _isStickyMode;
+                    if (_notifyIcon?.TrayPopupResolved is Popup popup)
+                    {
+                        _savedStaysOpen = popup.StaysOpen;
+                        
+                        // Enter pinned state
+                        _isStickyMode = true;
+                        popup.StaysOpen = true;
+                    }
+                }
+                else
+                {
+                    // Restore previous state
+                    _isStickyMode = _savedStickyMode;
+                    if (_notifyIcon?.TrayPopupResolved is Popup popup)
+                    {
+                        if (_isStickyMode)
+                        {
+                            // Returning to Sticky Mode
+                            popup.StaysOpen = false;
+                            
+                            // To ensure it doesn't close immediately (since we are setting StaysOpen=false),
+                            // we must ensure it has focus/activation.
+                            if (popup.Child is UIElement child)
+                            {
+                                if (PresentationSource.FromVisual(child) is System.Windows.Interop.HwndSource source)
+                                {
+                                    SetForegroundWindow(source.Handle);
+                                }
+                                child.Focus();
+                            }
+                        }
+                        else
+                        {
+                            // Returning to Hover Mode
+                            popup.StaysOpen = true; // Controlled by Watchdog
+                        }
+                    }
+                }
+            }
+        }
+        
+
+
+
+        
+
+
+
 
         protected override void OnExit(ExitEventArgs e)
         {
@@ -92,7 +160,7 @@ namespace BatteryMonitor3
                 _lastHoverPos = pt;
             }
 
-            if (_notifyIcon?.TrayPopupResolved is Popup popup && !popup.IsOpen && !_isStickyMode)
+            if (_notifyIcon?.TrayPopupResolved is Popup popup && !popup.IsOpen && !_isStickyMode && !IsPinned())
             {
                 if (_showDelayTimer != null && !_showDelayTimer.IsEnabled)
                 {
@@ -101,8 +169,16 @@ namespace BatteryMonitor3
             }
         }
 
+        private bool IsPinned() => _batteryViewModel?.IsPinned ?? false;
+
         private void MyNotifyIcon_TrayLeftMouseDown(object? sender, RoutedEventArgs e)
         {
+            if (IsPinned()) 
+            {
+                _notifyIcon?.ShowTrayPopup();
+                return;
+            }
+
             _showDelayTimer?.Stop();
             _isStickyMode = true;
             if (_notifyIcon?.TrayPopupResolved is Popup popup)
@@ -128,6 +204,7 @@ namespace BatteryMonitor3
 
         private void OnPopupClosed(object? sender, EventArgs e)
         {
+
             _isStickyMode = false; // Reset mode when popup closes for any reason
         }
 
@@ -168,6 +245,8 @@ namespace BatteryMonitor3
                  // Give a small grace period of 0.5s from last actual move event?
                  if ((DateTime.Now - _lastMoveTime).TotalSeconds < 0.5) isMouseOverIcon = true;
             }
+
+            if (IsPinned()) return; // Never close if pinned
 
             if (!isMouseOverPopup && !isMouseOverIcon)
             {
