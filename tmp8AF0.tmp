@@ -1,0 +1,8 @@
+2025/12/19 1:59:49
+System.AggregateException: 1 つ以上のエラーが発生しました。 ---> Microsoft.WebTools.Shared.Exceptions.WebToolsException: 発行でエラーが発生しました。エラーの原因を特定できませんでした。詳細については、出力ログを確認してください。
+   --- 内部例外スタック トレースの終わり ---
+---> (内部例外 #0) Microsoft.WebTools.Shared.Exceptions.WebToolsException: 発行でエラーが発生しました。エラーの原因を特定できませんでした。詳細については、出力ログを確認してください。<---
+
+Microsoft.WebTools.Shared.Exceptions.WebToolsException: 発行でエラーが発生しました。エラーの原因を特定できませんでした。詳細については、出力ログを確認してください。
+
+===================

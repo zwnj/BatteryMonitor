@@ -1,7 +1,9 @@
+using System;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Input;
+using System.Windows.Media.Animation;
 
 namespace BatteryMonitor3
 {
@@ -79,6 +81,20 @@ namespace BatteryMonitor3
                 {
                     AppSettings.Save(_parentPopup.HorizontalOffset, _parentPopup.VerticalOffset);
                 }
+            }
+        }
+
+        public void AnimateClose(Action onCompleted)
+        {
+            if (this.Content is FrameworkElement border && border.Resources["HideAnimation"] is Storyboard sb)
+            {
+                var clone = sb.Clone();
+                clone.Completed += (s, e) => onCompleted();
+                clone.Begin(border);
+            }
+            else
+            {
+                onCompleted();
             }
         }
     }

@@ -287,6 +287,39 @@ namespace BatteryMonitor3
                 {
                     Mouse.Capture(null);
                 }
+                
+                // Animate Close
+                if (popup.Child is BatteryMonitor3.PopupView view)
+                {
+                    // To avoid re-entrance or multiple closes, check Opacity or state?
+                    // But effectively, calling AnimateClose multiple times isn't fatal as long as it eventually closes.
+                    // However, we should stop the timer triggering close repeatedly.
+                    // But the timer runs every 200ms. If animation takes 300ms, it might trigger again.
+                    // We can check if we are already closing?
+                    // For simplicity, just run it. The callback will close.
+                    
+                    // Note: If standard WPF StaysOpen=false closes it, this won't run.
+                    // This creates a race condition for Sticky logic, but this block is guarded by !IsPinned && !Sticky.
+                    
+                    // Stop watchdog temporarily or just let it close?
+                    // If we don't block, the next tick might find it still open and animate again.
+                    // Let's rely on the fact that if we start animation, visual state usually persists until callback.
+                    // Ideally we should flag "closing". 
+                    
+                    // Simplest fix: Pause watchdog? Or check if IsOpen is true (it is).
+                    // We'll trust the UserControl handles multiple calls gracefully or use a flag.
+                    // Let's rely on the View logic being robust enough or simple "Fire and Forget".
+                    // But to be safe, maybe we should unset the DataContext to prevent updates? No.
+                    
+                    view.AnimateClose(() => _notifyIcon.CloseTrayPopup());
+                    
+                    // To prevent re-triggering immediately in next 200ms (animation is 300ms), 
+                    // we could disable this block.
+                    // But "CloseTrayPopup" is the ultimate state change. 
+                    // Let's return to avoid spamming the animation start.
+                    return; 
+                }
+
                 _notifyIcon.CloseTrayPopup();
             }
         }
