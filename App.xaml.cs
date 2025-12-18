@@ -175,7 +175,22 @@ namespace BatteryMonitor3
         {
             if (IsPinned()) 
             {
-                _notifyIcon?.ShowTrayPopup();
+                if (_notifyIcon?.TrayPopupResolved is Popup p && !p.IsOpen)
+                {
+                    _notifyIcon.ShowTrayPopup();
+                }
+                else if (_notifyIcon?.TrayPopupResolved is Popup existingPopup)
+                {
+                     // If already open, just focus
+                     if (existingPopup.Child is UIElement child)
+                     {
+                         if (PresentationSource.FromVisual(child) is System.Windows.Interop.HwndSource source)
+                         {
+                             SetForegroundWindow(source.Handle);
+                         }
+                         child.Focus();
+                     }
+                }
                 return;
             }
 
@@ -184,7 +199,25 @@ namespace BatteryMonitor3
             if (_notifyIcon?.TrayPopupResolved is Popup popup)
             {
                 popup.StaysOpen = false; // Let WPF handle auto-close on focus loss
-                _notifyIcon.ShowTrayPopup();
+                
+                if (popup.IsOpen)
+                {
+                    // Already open (e.g. from hover), do not call ShowTrayPopup to avoid position reset.
+                    // Instead, ensure focus so standard StaysOpen=false logic works (closes on blur).
+                    if (popup.Child is UIElement child)
+                    {
+                        if (PresentationSource.FromVisual(child) is System.Windows.Interop.HwndSource source)
+                        {
+                            SetForegroundWindow(source.Handle);
+                        }
+                        child.Focus();
+                    }
+                }
+                else
+                {
+                    // Not open, show it normally
+                    _notifyIcon.ShowTrayPopup();
+                }
             }
         }
 
