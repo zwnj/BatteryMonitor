@@ -224,14 +224,26 @@ namespace BatteryMonitor3
         private void OnShowTimerTick(object? sender, EventArgs e)
         {
             _showDelayTimer?.Stop();
-            if ((DateTime.Now - _lastActivityTime).TotalSeconds < 1.5)
+            
+            // 1. Check time: Has it been recently over the icon? (redundant if using distance, but keeps logic consistent)
+            // 2. Check distance: Is the mouse still near the last known tray icon position?
+            // "Tray icons" are usually 16x16 or 32x32. A radius of 30-40px handles "nearness" well.
+            
+            if (GetCursorPos(out Win32Point currentPt))
             {
-                _isStickyMode = false; // This is a hover-show
-                if (_notifyIcon?.TrayPopupResolved is Popup popup)
-                {
-                    popup.StaysOpen = true; // We will control closing with the watchdog
-                    _notifyIcon.ShowTrayPopup();
-                }
+                 double dx = currentPt.X - _lastHoverPos.X;
+                 double dy = currentPt.Y - _lastHoverPos.Y;
+                 double dist = Math.Sqrt(dx*dx + dy*dy);
+
+                 if (dist < 40.0) // 40 pixels threshold
+                 {
+                     _isStickyMode = false; // This is a hover-show
+                     if (_notifyIcon?.TrayPopupResolved is Popup popup)
+                     {
+                         popup.StaysOpen = true; // We will control closing with the watchdog
+                         _notifyIcon.ShowTrayPopup();
+                     }
+                 }
             }
         }
 
