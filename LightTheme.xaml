@@ -1,5 +1,6 @@
 <ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:sys="clr-namespace:System;assembly=mscorlib">
     <!-- Window/Background (Windows 11 Mica-like light gray) -->
     <SolidColorBrush x:Key="WindowBackgroundBrush" Color="#F3F3F3"/>
     <SolidColorBrush x:Key="WindowBorderBrush" Color="#E5E5E5"/>
@@ -19,4 +20,10 @@
     <!-- Icons/UI -->
     <SolidColorBrush x:Key="IconDefaultBrush" Color="#5C5C5C"/>
     <SolidColorBrush x:Key="SettingsIconBrush" Color="#1A1A1A"/>
+    
+    <!-- Pin Active -->
+    <Color x:Key="PinActiveColor">#00FF00</Color>
+    <SolidColorBrush x:Key="PinActiveBrush" Color="{StaticResource PinActiveColor}"/>
+    <sys:Double x:Key="PinGlowOpacity">0</sys:Double>
+    <sys:Double x:Key="PinGlowRadius">0</sys:Double>
 </ResourceDictionary>

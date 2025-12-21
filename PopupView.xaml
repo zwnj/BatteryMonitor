@@ -6,172 +6,231 @@
              xmlns:local="clr-namespace:BatteryMonitor3"
              mc:Ignorable="d" 
              d:DesignHeight="450" d:DesignWidth="320">
-    <Border Background="{DynamicResource WindowBackgroundBrush}" CornerRadius="12" BorderBrush="{DynamicResource WindowBorderBrush}" BorderThickness="1"
-            Height="450" Width="320"
-            RenderTransformOrigin="0.5,0.5">
-        <Border.RenderTransform>
-            <ScaleTransform x:Name="PopupScale" ScaleX="1" ScaleY="1"/>
-        </Border.RenderTransform>
-        <Border.Resources>
-            <Storyboard x:Key="HideAnimation">
-                <DoubleAnimation Storyboard.TargetProperty="Opacity"
-                                 To="0" Duration="0:0:0.3"/>
-                <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(ScaleTransform.ScaleX)"
-                                 To="0.8" Duration="0:0:0.3">
-                    <DoubleAnimation.EasingFunction>
-                        <BackEase EasingMode="EaseIn" Amplitude="0.3"/>
-                    </DoubleAnimation.EasingFunction>
-                </DoubleAnimation>
-                <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(ScaleTransform.ScaleY)"
-                                 To="0.8" Duration="0:0:0.3">
-                    <DoubleAnimation.EasingFunction>
-                        <BackEase EasingMode="EaseIn" Amplitude="0.3"/>
-                    </DoubleAnimation.EasingFunction>
-                </DoubleAnimation>
-            </Storyboard>
-        </Border.Resources>
-        <Border.Triggers>
-            <EventTrigger RoutedEvent="Loaded">
-                <BeginStoryboard>
-                    <Storyboard>
-                        <DoubleAnimation Storyboard.TargetProperty="Opacity"
-                                         From="0" To="1" Duration="0:0:0.4"/>
-                        <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(ScaleTransform.ScaleX)"
-                                         From="0.8" To="1" Duration="0:0:0.4">
-                            <DoubleAnimation.EasingFunction>
-                                <BackEase EasingMode="EaseOut" Amplitude="0.3"/>
-                            </DoubleAnimation.EasingFunction>
-                        </DoubleAnimation>
-                        <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(ScaleTransform.ScaleY)"
-                                         From="0.8" To="1" Duration="0:0:0.4">
-                            <DoubleAnimation.EasingFunction>
-                                <BackEase EasingMode="EaseOut" Amplitude="0.3"/>
-                            </DoubleAnimation.EasingFunction>
-                        </DoubleAnimation>
-                    </Storyboard>
-                </BeginStoryboard>
-            </EventTrigger>
-        </Border.Triggers>
+    <Grid>
+        <Border x:Name="MainBorder" Background="{DynamicResource WindowBackgroundBrush}" CornerRadius="12" BorderBrush="{DynamicResource WindowBorderBrush}" BorderThickness="1"
+                Height="450" Width="320"
+                RenderTransformOrigin="0.5,0.5">
+            <Border.RenderTransform>
+                <ScaleTransform x:Name="PopupScale" ScaleX="1" ScaleY="1"/>
+            </Border.RenderTransform>
+            <Border.Resources>
+                <Storyboard x:Key="HideAnimation">
+                    <DoubleAnimation Storyboard.TargetProperty="Opacity"
+                                     To="0" Duration="0:0:0.3"/>
+                    <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(ScaleTransform.ScaleX)"
+                                     To="0.8" Duration="0:0:0.3">
+                        <DoubleAnimation.EasingFunction>
+                            <BackEase EasingMode="EaseIn" Amplitude="0.3"/>
+                        </DoubleAnimation.EasingFunction>
+                    </DoubleAnimation>
+                    <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(ScaleTransform.ScaleY)"
+                                     To="0.8" Duration="0:0:0.3">
+                        <DoubleAnimation.EasingFunction>
+                            <BackEase EasingMode="EaseIn" Amplitude="0.3"/>
+                        </DoubleAnimation.EasingFunction>
+                    </DoubleAnimation>
+                </Storyboard>
+            </Border.Resources>
+            <Border.Triggers>
+                <EventTrigger RoutedEvent="Loaded">
+                    <BeginStoryboard>
+                        <Storyboard>
+                            <DoubleAnimation Storyboard.TargetProperty="Opacity"
+                                             From="0" To="1" Duration="0:0:0.4"/>
+                            <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(ScaleTransform.ScaleX)"
+                                             From="0.8" To="1" Duration="0:0:0.4">
+                                <DoubleAnimation.EasingFunction>
+                                    <BackEase EasingMode="EaseOut" Amplitude="0.3"/>
+                                </DoubleAnimation.EasingFunction>
+                            </DoubleAnimation>
+                            <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(ScaleTransform.ScaleY)"
+                                             From="0.8" To="1" Duration="0:0:0.4">
+                                <DoubleAnimation.EasingFunction>
+                                    <BackEase EasingMode="EaseOut" Amplitude="0.3"/>
+                                </DoubleAnimation.EasingFunction>
+                            </DoubleAnimation>
+                        </Storyboard>
+                    </BeginStoryboard>
+                </EventTrigger>
+            </Border.Triggers>
 
-        <Grid Margin="20">
-            <Grid.RowDefinitions>
-                <RowDefinition Height="Auto"/>
-                <RowDefinition Height="Auto"/>
-                <RowDefinition Height="Auto"/>
-                <RowDefinition Height="*"/>
-            </Grid.RowDefinitions>
-            <Grid.Resources>
-                <local:PinColorConverter x:Key="PinColorConverter"/>
-                <Style x:Key="StatusTextStyle" TargetType="TextBlock">
-                    <Setter Property="Foreground" Value="{DynamicResource OrdinaryStatusBrush}"/>
-                    <Style.Triggers>
-                        <DataTrigger Binding="{Binding IsCharging}" Value="True">
-                            <Setter Property="Foreground" Value="{DynamicResource ChargingStatusBrush}"/>
-                        </DataTrigger>
-                    </Style.Triggers>
-                </Style>
-            </Grid.Resources>
+            <Grid Margin="20">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
+                <Grid.Resources>
+                    <local:PinColorConverter x:Key="PinColorConverter"/>
+                    <Style x:Key="StatusTextStyle" TargetType="TextBlock">
+                        <Setter Property="Foreground" Value="{DynamicResource OrdinaryStatusBrush}"/>
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding IsCharging}" Value="True">
+                                <Setter Property="Foreground" Value="{DynamicResource ChargingStatusBrush}"/>
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </Grid.Resources>
 
-            <Grid Grid.Row="0" Margin="0,0,0,20">
-                <TextBlock Text="Battery Monitor" Foreground="{DynamicResource SecondaryTextBrush}" FontSize="14" VerticalAlignment="Center"/>
-                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
-                    <ToggleButton IsChecked="{Binding IsPinned, Mode=TwoWay}"
-                                  Background="Transparent" BorderBrush="Transparent"
-                                  Margin="0,0,10,0">
-                        <ToggleButton.Template>
-                            <ControlTemplate TargetType="ToggleButton">
-                                <Grid Background="Transparent">
-                                    <TextBlock x:Name="PinIcon" Text="📌" FontSize="16" Foreground="{DynamicResource IconDefaultBrush}">
-                                        <TextBlock.Effect>
-                                            <DropShadowEffect x:Name="GlowEffect" Color="Transparent" BlurRadius="0" ShadowDepth="0" Opacity="0"/>
-                                        </TextBlock.Effect>
-                                    </TextBlock>
-                                </Grid>
-                                <ControlTemplate.Triggers>
-                                    <Trigger Property="IsChecked" Value="True">
-                                        <Setter TargetName="PinIcon" Property="Foreground" Value="#00FF00"/>
-                                        <Setter TargetName="PinIcon" Property="Effect">
-                                            <Setter.Value>
-                                                <DropShadowEffect Color="#00FF00" BlurRadius="15" ShadowDepth="0" Opacity="1.0"/>
-                                            </Setter.Value>
-                                        </Setter>
-                                    </Trigger>
-                                    <Trigger Property="IsMouseOver" Value="True">
-                                        <Setter TargetName="PinIcon" Property="Opacity" Value="0.8"/>
-                                    </Trigger>
-                                </ControlTemplate.Triggers>
-                            </ControlTemplate>
-                        </ToggleButton.Template>
-                    </ToggleButton>
-                    <Button Content="⚙" Background="Transparent" BorderBrush="Transparent" Foreground="{DynamicResource SettingsIconBrush}" FontSize="16" Click="OnThemeToggleClick"/>
+                <Grid Grid.Row="0" Margin="0,0,0,20">
+                    <TextBlock Text="Battery Monitor" Foreground="{DynamicResource SecondaryTextBrush}" FontSize="14" VerticalAlignment="Center"/>
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                        <ToggleButton IsChecked="{Binding IsPinned, Mode=TwoWay}"
+                                      Background="Transparent" BorderBrush="Transparent"
+                                      Margin="0,0,10,0">
+                            <ToggleButton.Template>
+                                <ControlTemplate TargetType="ToggleButton">
+                                    <Grid Background="Transparent">
+                                        <TextBlock x:Name="PinIcon" Text="📌" FontSize="16" Foreground="{DynamicResource IconDefaultBrush}">
+                                            <TextBlock.Effect>
+                                                <DropShadowEffect x:Name="GlowEffect" Color="Transparent" BlurRadius="0" ShadowDepth="0" Opacity="0"/>
+                                            </TextBlock.Effect>
+                                        </TextBlock>
+                                    </Grid>
+                                    <ControlTemplate.Triggers>
+                                        <Trigger Property="IsChecked" Value="True">
+                                            <Setter TargetName="PinIcon" Property="Foreground" Value="{DynamicResource PinActiveBrush}"/>
+                                            <Setter TargetName="PinIcon" Property="Effect">
+                                                <Setter.Value>
+                                                    <DropShadowEffect Color="{DynamicResource PinActiveColor}" BlurRadius="{DynamicResource PinGlowRadius}" ShadowDepth="0" Opacity="{DynamicResource PinGlowOpacity}"/>
+                                                </Setter.Value>
+                                            </Setter>
+                                        </Trigger>
+                                        <Trigger Property="IsMouseOver" Value="True">
+                                            <Setter TargetName="PinIcon" Property="Opacity" Value="0.8"/>
+                                        </Trigger>
+                                    </ControlTemplate.Triggers>
+                                </ControlTemplate>
+                            </ToggleButton.Template>
+                        </ToggleButton>
+                        <ToggleButton x:Name="ThemeToggle" Background="Transparent" BorderBrush="Transparent" Click="OnThemeToggleClick" Margin="10,0,0,0" Width="46" Height="24">
+                            <ToggleButton.Template>
+                                <ControlTemplate TargetType="ToggleButton">
+                                    <Grid>
+                                        <Border x:Name="Track" Background="#E5E5E5" CornerRadius="12" BorderBrush="{x:Null}"/>
+                                        <Grid x:Name="Thumb" Width="18" Height="18" HorizontalAlignment="Left" Margin="3,0,0,0">
+                                            <Grid.RenderTransform>
+                                                <TranslateTransform X="0" Y="0"/>
+                                            </Grid.RenderTransform>
+                                            <!-- Sun Icon -->
+                                            <Path x:Name="SunIcon" Data="M12 3a1 1 0 0 1 1 1v1a1 1 0 1 1-2 0V4a1 1 0 0 1 1-1zm7.07 3.93a1 1 0 0 1 0 1.414l-.707.707a1 1 0 1 1-1.414-1.414l.707-.707a1 1 0 0 1 1.414 0zM12 8a4 4 0 1 1 0 8 4 4 0 0 1 0-8zm-8.07-1.07a1 1 0 0 1 1.414 0l.707.707A1 1 0 1 1 4.636 9.05l-.707-.707a1 1 0 0 1 0-1.414zM4 12a1 1 0 0 1 1-1h1a1 1 0 1 1 0 2H5a1 1 0 0 1-1-1zm.636 5.95a1 1 0 0 1 0-1.414l.707-.707a1 1 0 0 1 1.414 1.414l-.707.707a1 1 0 0 1-1.414 0zM12 19a1 1 0 0 1 1 1v1a1 1 0 1 1-2 0v-1a1 1 0 0 1 1-1zm7.07-1.07a1 1 0 0 1-1.414 0l-.707-.707a1 1 0 0 1 1.414-1.414l.707.707a1 1 0 0 1 0 1.414zM20 12a1 1 0 0 1-1 1h-1a1 1 0 1 1 0-2h1a1 1 0 0 1 1 1z" Fill="#424242" Stretch="Uniform" Opacity="1"/>
+                                            <!-- Moon Icon -->
+                                            <Path x:Name="MoonIcon" Data="M12 3c.132 0 .263 0 .393 0a7.5 7.5 0 0 0 7.92 12.446a9 9 0 1 1 -8.313-12.454z" Fill="#e1e1ff" Stretch="Uniform" Opacity="0">
+                                                <Path.Effect>
+                                                    <DropShadowEffect Color="#e1e1ff" BlurRadius="5" ShadowDepth="0" Opacity="0.5"/>
+                                                </Path.Effect>
+                                            </Path>
+                                        </Grid>
+                                    </Grid>
+                                    <ControlTemplate.Triggers>
+                                        <Trigger Property="IsChecked" Value="True">
+                                            <!-- Dark Mode State Static Setters -->
+                                            <Setter TargetName="Track" Property="Background" Value="#34323D"/>
+                                            
+                                            <Trigger.EnterActions>
+                                                <BeginStoryboard>
+                                                    <Storyboard>
+                                                        <DoubleAnimation Storyboard.TargetName="Thumb" Storyboard.TargetProperty="(UIElement.RenderTransform).(TranslateTransform.X)" To="22" Duration="0:0:0.3">
+                                                            <DoubleAnimation.EasingFunction><CubicEase EasingMode="EaseOut"/></DoubleAnimation.EasingFunction>
+                                                        </DoubleAnimation>
+                                                        <DoubleAnimation Storyboard.TargetName="SunIcon" Storyboard.TargetProperty="Opacity" To="0" Duration="0:0:0.3"/>
+                                                        <DoubleAnimation Storyboard.TargetName="MoonIcon" Storyboard.TargetProperty="Opacity" To="1" Duration="0:0:0.3"/>
+                                                    </Storyboard>
+                                                </BeginStoryboard>
+                                            </Trigger.EnterActions>
+                                            
+                                            <Trigger.ExitActions>
+                                                <BeginStoryboard>
+                                                    <Storyboard>
+                                                        <DoubleAnimation Storyboard.TargetName="Thumb" Storyboard.TargetProperty="(UIElement.RenderTransform).(TranslateTransform.X)" To="0" Duration="0:0:0.3">
+                                                            <DoubleAnimation.EasingFunction><CubicEase EasingMode="EaseOut"/></DoubleAnimation.EasingFunction>
+                                                        </DoubleAnimation>
+                                                        <DoubleAnimation Storyboard.TargetName="SunIcon" Storyboard.TargetProperty="Opacity" To="1" Duration="0:0:0.3"/>
+                                                        <DoubleAnimation Storyboard.TargetName="MoonIcon" Storyboard.TargetProperty="Opacity" To="0" Duration="0:0:0.3"/>
+                                                    </Storyboard>
+                                                </BeginStoryboard>
+                                            </Trigger.ExitActions>
+                                        </Trigger>
+                                        <Trigger Property="IsMouseOver" Value="True">
+                                            <Setter TargetName="Track" Property="Opacity" Value="0.8"/>
+                                        </Trigger>
+                                    </ControlTemplate.Triggers>
+                                </ControlTemplate>
+                            </ToggleButton.Template>
+                        </ToggleButton>
+                    </StackPanel>
+                </Grid>
+
+                <StackPanel Grid.Row="1" Margin="0,0,0,30">
+
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                        <TextBlock Text="⚡" Style="{StaticResource StatusTextStyle}" FontSize="32" Margin="0,0,10,0"/>
+                        <TextBlock Text="{Binding BatteryLevel}" Foreground="{DynamicResource PrimaryTextBrush}" FontSize="48" FontWeight="Bold"/>
+                        <TextBlock Text="%" Foreground="{DynamicResource SecondaryTextBrush}" FontSize="24" VerticalAlignment="Bottom" Margin="5,0,0,8"/>
+                    </StackPanel>
+
+                    <TextBlock Text="{Binding MainStatusText}" 
+                               Style="{StaticResource StatusTextStyle}"
+                               FontSize="16" HorizontalAlignment="Center" FontWeight="SemiBold" Margin="0,5,0,0"/>
+
+                    <TextBlock Text="{Binding SubStatusText}" 
+                               Foreground="{DynamicResource TertiaryTextBrush}" 
+                               FontSize="13" HorizontalAlignment="Center" Margin="0,5,0,0"/>
                 </StackPanel>
+
+                <UniformGrid Grid.Row="2" Columns="2" Rows="2">
+                    <UniformGrid.Resources>
+                        <Style TargetType="Border">
+                            <Setter Property="Background" Value="{DynamicResource CardBackgroundBrush}"/>
+                            <Setter Property="CornerRadius" Value="8"/>
+                            <Setter Property="Margin" Value="5"/>
+                            <Setter Property="Padding" Value="10"/>
+                        </Style>
+                        <Style TargetType="TextBlock" x:Key="LabelStyle">
+                            <Setter Property="Foreground" Value="{DynamicResource TertiaryTextBrush}"/>
+                            <Setter Property="FontSize" Value="11"/>
+                        </Style>
+                        <Style TargetType="TextBlock" x:Key="ValueStyle">
+                            <Setter Property="Foreground" Value="{DynamicResource PrimaryTextBrush}"/>
+                            <Setter Property="FontSize" Value="18"/>
+                            <Setter Property="FontWeight" Value="Bold"/>
+                            <Setter Property="HorizontalAlignment" Value="Right"/>
+                        </Style>
+                    </UniformGrid.Resources>
+
+                    <Border>
+                        <StackPanel>
+                            <TextBlock Text="POWER RATE" Style="{StaticResource LabelStyle}"/>
+                            <TextBlock Text="{Binding PowerRate}" Style="{StaticResource ValueStyle}"/>
+                        </StackPanel>
+                    </Border>
+
+                    <Border>
+                        <StackPanel>
+                            <TextBlock Text="VOLTAGE" Style="{StaticResource LabelStyle}"/>
+                            <TextBlock Text="{Binding Voltage}" Style="{StaticResource ValueStyle}"/>
+                        </StackPanel>
+                    </Border>
+
+                    <Border>
+                        <StackPanel>
+                            <TextBlock Text="CYCLE COUNT" Style="{StaticResource LabelStyle}"/>
+                            <TextBlock Text="{Binding CycleCount}" Style="{StaticResource ValueStyle}"/>
+                        </StackPanel>
+                    </Border>
+
+                    <Border>
+                        <StackPanel>
+                            <TextBlock Text="HEALTH" Style="{StaticResource LabelStyle}"/>
+                            <TextBlock Text="{Binding Health}" Style="{StaticResource ValueStyle}"/>
+                        </StackPanel>
+                    </Border>
+                </UniformGrid>
             </Grid>
+        </Border>
 
-            <StackPanel Grid.Row="1" Margin="0,0,0,30">
-
-                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
-                    <TextBlock Text="⚡" Style="{StaticResource StatusTextStyle}" FontSize="32" Margin="0,0,10,0"/>
-                    <TextBlock Text="{Binding BatteryLevel}" Foreground="{DynamicResource PrimaryTextBrush}" FontSize="48" FontWeight="Bold"/>
-                    <TextBlock Text="%" Foreground="{DynamicResource SecondaryTextBrush}" FontSize="24" VerticalAlignment="Bottom" Margin="5,0,0,8"/>
-                </StackPanel>
-
-                <TextBlock Text="{Binding MainStatusText}" 
-                           Style="{StaticResource StatusTextStyle}"
-                           FontSize="16" HorizontalAlignment="Center" FontWeight="SemiBold" Margin="0,5,0,0"/>
-
-                <TextBlock Text="{Binding SubStatusText}" 
-                           Foreground="{DynamicResource TertiaryTextBrush}" 
-                           FontSize="13" HorizontalAlignment="Center" Margin="0,5,0,0"/>
-            </StackPanel>
-
-            <UniformGrid Grid.Row="2" Columns="2" Rows="2">
-                <UniformGrid.Resources>
-                    <Style TargetType="Border">
-                        <Setter Property="Background" Value="{DynamicResource CardBackgroundBrush}"/>
-                        <Setter Property="CornerRadius" Value="8"/>
-                        <Setter Property="Margin" Value="5"/>
-                        <Setter Property="Padding" Value="10"/>
-                    </Style>
-                    <Style TargetType="TextBlock" x:Key="LabelStyle">
-                        <Setter Property="Foreground" Value="{DynamicResource TertiaryTextBrush}"/>
-                        <Setter Property="FontSize" Value="11"/>
-                    </Style>
-                    <Style TargetType="TextBlock" x:Key="ValueStyle">
-                        <Setter Property="Foreground" Value="{DynamicResource PrimaryTextBrush}"/>
-                        <Setter Property="FontSize" Value="18"/>
-                        <Setter Property="FontWeight" Value="Bold"/>
-                        <Setter Property="HorizontalAlignment" Value="Right"/>
-                    </Style>
-                </UniformGrid.Resources>
-
-                <Border>
-                    <StackPanel>
-                        <TextBlock Text="POWER RATE" Style="{StaticResource LabelStyle}"/>
-                        <TextBlock Text="{Binding PowerRate}" Style="{StaticResource ValueStyle}"/>
-                    </StackPanel>
-                </Border>
-
-                <Border>
-                    <StackPanel>
-                        <TextBlock Text="VOLTAGE" Style="{StaticResource LabelStyle}"/>
-                        <TextBlock Text="{Binding Voltage}" Style="{StaticResource ValueStyle}"/>
-                    </StackPanel>
-                </Border>
-
-                <Border>
-                    <StackPanel>
-                        <TextBlock Text="CYCLE COUNT" Style="{StaticResource LabelStyle}"/>
-                        <TextBlock Text="{Binding CycleCount}" Style="{StaticResource ValueStyle}"/>
-                    </StackPanel>
-                </Border>
-
-                <Border>
-                    <StackPanel>
-                        <TextBlock Text="HEALTH" Style="{StaticResource LabelStyle}"/>
-                        <TextBlock Text="{Binding Health}" Style="{StaticResource ValueStyle}"/>
-                    </StackPanel>
-                </Border>
-            </UniformGrid>
-        </Grid>
-    </Border>
+        <!-- Overlay for transition -->
+        <Image x:Name="TransitionOverlay" Visibility="Collapsed" IsHitTestVisible="False" Stretch="None"/>
+    </Grid>
 </UserControl>

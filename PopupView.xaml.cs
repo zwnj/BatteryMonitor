@@ -48,11 +48,47 @@ namespace BatteryMonitor3
             }
 
             this.Resources.MergedDictionaries.Add(newDict);
+            
+            // Sync ToggleButton state
+            // IsChecked = True -> Dark Mode
+            // IsChecked = False -> Light Mode
+            if (ThemeToggle != null)
+            {
+                ThemeToggle.IsChecked = ThemeManager.CurrentTheme == ThemeType.Dark;
+            }
         }
 
         private void OnThemeToggleClick(object sender, RoutedEventArgs e)
         {
+            // 1. Capture current visual as bitmap
+            if (MainBorder != null)
+            {
+                int w = (int)MainBorder.ActualWidth;
+                int h = (int)MainBorder.ActualHeight;
+                if (w > 0 && h > 0)
+                {
+                    var bmp = new System.Windows.Media.Imaging.RenderTargetBitmap(w, h, 96, 96, System.Windows.Media.PixelFormats.Pbgra32);
+                    bmp.Render(MainBorder);
+                    
+                    TransitionOverlay.Source = bmp;
+                    TransitionOverlay.Opacity = 1;
+                    TransitionOverlay.Visibility = Visibility.Visible;
+                }
+            }
+
+            // 2. Switch Theme (instant update of underlying UI controls)
             ThemeManager.ToggleTheme();
+
+            // 3. Animate Overlay opacity 1 -> 0
+            var fadeOut = new DoubleAnimation(1, 0, TimeSpan.FromSeconds(0.4));
+            fadeOut.EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut };
+            fadeOut.Completed += (s, _) => 
+            {
+                TransitionOverlay.Visibility = Visibility.Collapsed;
+                TransitionOverlay.Source = null; // release memory
+            };
+            
+            TransitionOverlay.BeginAnimation(Image.OpacityProperty, fadeOut);
         }
 
         private void PopupView_Loaded(object sender, RoutedEventArgs e)
