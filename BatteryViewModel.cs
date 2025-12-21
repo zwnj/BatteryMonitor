@@ -58,7 +58,7 @@ namespace BatteryMonitor3
 
             if (data.IsCharging)
             {
-                StatusColor = Brushes.LightGreen;
+                IsCharging = true;
                 MainStatusText = "充電中";
                 SubStatusText = (voltageV > 0 && currentA > 0)
                     ? $"{powerW:F1}W ({voltageV:F1}V / {currentA:F1}A)"
@@ -66,7 +66,7 @@ namespace BatteryMonitor3
             }
             else
             {
-                StatusColor = Brushes.White;
+                IsCharging = false;
                 MainStatusText = "バッテリー使用中";
                 SubStatusText = (powerW > 0) ? $"消費: {powerW:F1}W" : "待機中";
             }
@@ -80,12 +80,7 @@ namespace BatteryMonitor3
             set { _batteryLevel = value; OnPropertyChanged(); }
         }
 
-        private Brush _statusColor = Brushes.White;
-        public Brush StatusColor
-        {
-            get => _statusColor;
-            set { _statusColor = value; OnPropertyChanged(); }
-        }
+
 
         private string _mainStatusText = "---";
         public string MainStatusText
@@ -127,6 +122,20 @@ namespace BatteryMonitor3
         {
             get => _health;
             set { _health = value; OnPropertyChanged(); }
+        }
+
+        private bool _isCharging;
+        public bool IsCharging
+        {
+            get => _isCharging;
+            set 
+            {
+                if (_isCharging != value)
+                {
+                    _isCharging = value;
+                    OnPropertyChanged();
+                }
+            }
         }
 
         private bool _isPinned = false;

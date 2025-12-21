@@ -23,6 +23,36 @@ namespace BatteryMonitor3
             this.MouseLeftButtonDown += PopupView_MouseLeftButtonDown;
             this.MouseLeftButtonUp += PopupView_MouseLeftButtonUp;
             this.MouseMove += PopupView_MouseMove;
+            this.Loaded += PopupView_Loaded;
+            ThemeManager.ThemeChanged += (s, args) => UpdateTheme();
+            
+            // Initial theme apply
+            UpdateTheme();
+        }
+
+        private void UpdateTheme()
+        {
+            var uri = ThemeManager.GetThemeUri(ThemeManager.CurrentTheme);
+            var newDict = new ResourceDictionary { Source = uri };
+
+            // Clear old theme dictionaries from local resources
+            var oldDicts = this.Resources.MergedDictionaries
+                .Where(d => d.Source != null &&
+                            (d.Source.OriginalString.EndsWith("DarkTheme.xaml") ||
+                             d.Source.OriginalString.EndsWith("LightTheme.xaml")))
+                .ToList();
+
+            foreach (var oldDict in oldDicts)
+            {
+                this.Resources.MergedDictionaries.Remove(oldDict);
+            }
+
+            this.Resources.MergedDictionaries.Add(newDict);
+        }
+
+        private void OnThemeToggleClick(object sender, RoutedEventArgs e)
+        {
+            ThemeManager.ToggleTheme();
         }
 
         private void PopupView_Loaded(object sender, RoutedEventArgs e)

@@ -70,10 +70,7 @@ namespace BatteryMonitor3
             _notifyIcon.TrayMouseMove += MyNotifyIcon_TrayMouseMove;
             _notifyIcon.TrayLeftMouseDown += MyNotifyIcon_TrayLeftMouseDown;
 
-            if (_notifyIcon.ContextMenu?.Items[0] is MenuItem exitItem)
-            {
-                exitItem.Click += Exit_Click;
-            }
+
 
             // Data updates
             _batteryViewModel.UpdateData();
@@ -335,6 +332,8 @@ namespace BatteryMonitor3
                 _notifyIcon.CloseTrayPopup();
             }
         }
+
+
 
         private void Exit_Click(object? sender, RoutedEventArgs e)
         {

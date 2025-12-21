@@ -1,0 +1,22 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <!-- Window/Background (Windows 11 Mica-like light gray) -->
+    <SolidColorBrush x:Key="WindowBackgroundBrush" Color="#F3F3F3"/>
+    <SolidColorBrush x:Key="WindowBorderBrush" Color="#E5E5E5"/>
+    
+    <!-- Cards/Panels (White with subtle elevation/separation) -->
+    <SolidColorBrush x:Key="CardBackgroundBrush" Color="#FFFFFF"/>
+    
+    <!-- Text -->
+    <SolidColorBrush x:Key="PrimaryTextBrush" Color="#1A1A1A"/>
+    <SolidColorBrush x:Key="SecondaryTextBrush" Color="#5C5C5C"/>
+    <SolidColorBrush x:Key="TertiaryTextBrush" Color="#5C5C5C"/>
+    
+    <!-- Status Colors -->
+    <SolidColorBrush x:Key="OrdinaryStatusBrush" Color="#1A1A1A"/>
+    <SolidColorBrush x:Key="ChargingStatusBrush" Color="#008000"/> <!-- Darker Green for visibility on light bg -->
+    
+    <!-- Icons/UI -->
+    <SolidColorBrush x:Key="IconDefaultBrush" Color="#5C5C5C"/>
+    <SolidColorBrush x:Key="SettingsIconBrush" Color="#1A1A1A"/>
+</ResourceDictionary>
