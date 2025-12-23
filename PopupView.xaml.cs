@@ -3,9 +3,10 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Input;
+using System.Windows.Media;
 using System.Windows.Media.Animation;
 
-namespace BatteryMonitor3
+namespace BatteryMonitor3   
 {
     /// <summary>
     /// Interaction logic for PopupView.xaml
@@ -113,12 +114,31 @@ namespace BatteryMonitor3
 
         private void PopupView_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
         {
+            // インタラクティブなコントロール（TextBox, Button等）の上でのクリックはドラッグを開始しない
+            if (IsInputEelement(e.OriginalSource as DependencyObject))
+            {
+                return;
+            }
+
             _parentPopup ??= this.Parent as Popup;
             if (_parentPopup == null) return;
 
             _isDragging = true;
             _startPoint = e.GetPosition(null);
             this.CaptureMouse();
+        }
+
+        private bool IsInputEelement(DependencyObject? obj)
+        {
+            while (obj != null && obj != this)
+            {
+                if (obj is System.Windows.Controls.TextBox || obj is System.Windows.Controls.Primitives.ButtonBase)
+                {
+                    return true;
+                }
+                obj = VisualTreeHelper.GetParent(obj);
+            }
+            return false;
         }
 
         private void PopupView_MouseMove(object sender, MouseEventArgs e)
@@ -145,7 +165,8 @@ namespace BatteryMonitor3
                 // ドラッグ終了時に位置を保存
                 if (_parentPopup != null)
                 {
-                    AppSettings.Save(_parentPopup.HorizontalOffset, _parentPopup.VerticalOffset);
+                    var currentSettings = AppSettings.Load();
+                    AppSettings.Save(_parentPopup.HorizontalOffset, _parentPopup.VerticalOffset, currentSettings.ChargeLimit);
                 }
             }
         }

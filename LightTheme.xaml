@@ -18,12 +18,15 @@
     <SolidColorBrush x:Key="ChargingStatusBrush" Color="#008000"/> <!-- Darker Green for visibility on light bg -->
     
     <!-- Icons/UI -->
-    <SolidColorBrush x:Key="IconDefaultBrush" Color="#5C5C5C"/>
     <SolidColorBrush x:Key="SettingsIconBrush" Color="#1A1A1A"/>
     
     <!-- Pin Active -->
     <Color x:Key="PinActiveColor">#00FF00</Color>
     <SolidColorBrush x:Key="PinActiveBrush" Color="{StaticResource PinActiveColor}"/>
+    <SolidColorBrush x:Key="PinGlowBrush" Color="#00FF00"/>
+
+    <SolidColorBrush x:Key="IconDefaultBrush" Color="#555555"/>
+
     <sys:Double x:Key="PinGlowOpacity">0</sys:Double>
-    <sys:Double x:Key="PinGlowRadius">0</sys:Double>
+    <sys:Double x:Key="PinGlowRadius">0.0</sys:Double>
 </ResourceDictionary>

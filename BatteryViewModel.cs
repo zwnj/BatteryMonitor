@@ -15,10 +15,14 @@ namespace BatteryMonitor3
         public BatteryViewModel()
         {
             _service = new BatteryService();
+            var settings = AppSettings.Load();
+            _chargeLimit = settings.ChargeLimit;
             TogglePinCommand = new RelayCommand(_ => IsPinned = !IsPinned);
+            ToggleSettingsCommand = new RelayCommand(_ => IsSettingsOpen = !IsSettingsOpen);
         }
 
         public ICommand TogglePinCommand { get; }
+        public ICommand ToggleSettingsCommand { get; }
 
         private void OnPropertyChanged([CallerMemberName] string? name = null)
         {
@@ -60,6 +64,29 @@ namespace BatteryMonitor3
             {
                 IsCharging = true;
                 MainStatusText = "充電中";
+                
+                // 充電完了までの時間 (設定された上限まで)
+                if (data.ChargeRate > 0)
+                {
+                    double targetCapacity = data.FullChargedCapacity * (ChargeLimit / 100.0);
+                    double neededCapacity = targetCapacity - data.RemainingCapacity;
+
+                    if (neededCapacity <= 0)
+                    {
+                        RemainingTime = $"充電制限({ChargeLimit}%)に到達";
+                    }
+                    else
+                    {
+                        double hoursLeft = neededCapacity / data.ChargeRate;
+                        TimeSpan ts = TimeSpan.FromHours(hoursLeft);
+                        RemainingTime = $"あと {ts.Hours}時間 {ts.Minutes}分 ({ChargeLimit}%まで)";
+                    }
+                }
+                else
+                {
+                    RemainingTime = "計算中...";
+                }
+
                 SubStatusText = (voltageV > 0 && currentA > 0)
                     ? $"{powerW:F1}W ({voltageV:F1}V / {currentA:F1}A)"
                     : $"{powerW:F1}W";
@@ -68,8 +95,29 @@ namespace BatteryMonitor3
             {
                 IsCharging = false;
                 MainStatusText = "バッテリー使用中";
+                
+                // 残り駆動時間
+                if (data.DischargeRate > 0)
+                {
+                    double hoursLeft = (double)data.RemainingCapacity / data.DischargeRate;
+                    TimeSpan ts = TimeSpan.FromHours(hoursLeft);
+                    RemainingTime = $"あと {ts.Hours}時間 {ts.Minutes}分";
+                }
+                else
+                {
+                    RemainingTime = "-- 時間 -- 分";
+                }
+
                 SubStatusText = (powerW > 0) ? $"消費: {powerW:F1}W" : "待機中";
             }
+
+            // 新しいデータ項目の更新
+            Temperature = (data.Temperature > -270) ? $"{data.Temperature:F1} °C" : "-- °C";
+            
+            // mWh -> Wh
+            double remWh = data.RemainingCapacity / 1000.0;
+            double fullWh = data.FullChargedCapacity / 1000.0;
+            CapacityDetail = $"{remWh:F1} / {fullWh:F1} Wh";
         }
 
         // --- プロパティ群 ---
@@ -110,8 +158,8 @@ namespace BatteryMonitor3
             set { _voltage = value; OnPropertyChanged(); }
         }
 
-        private string _cycleCount = "-- 回"; // 変更: Temperature -> CycleCount
-        public string CycleCount // 変更: Temperature -> CycleCount
+        private string _cycleCount = "-- 回";
+        public string CycleCount
         {
             get => _cycleCount;
             set { _cycleCount = value; OnPropertyChanged(); }
@@ -122,6 +170,49 @@ namespace BatteryMonitor3
         {
             get => _health;
             set { _health = value; OnPropertyChanged(); }
+        }
+
+        // --- Phase 2 New Properties ---
+        private string _remainingTime = "--";
+        public string RemainingTime
+        {
+            get => _remainingTime;
+            set { _remainingTime = value; OnPropertyChanged(); }
+        }
+
+        private string _capacityDetail = "-- / -- Wh";
+        public string CapacityDetail
+        {
+            get => _capacityDetail;
+            set { _capacityDetail = value; OnPropertyChanged(); }
+        }
+
+        private string _temperature = "-- °C";
+        public string Temperature
+        {
+            get => _temperature;
+            set { _temperature = value; OnPropertyChanged(); }
+        }
+
+        private int _chargeLimit = 100;
+        public int ChargeLimit
+        {
+            get => _chargeLimit;
+            set 
+            { 
+                if (_chargeLimit != value)
+                {
+                    _chargeLimit = value; 
+                    OnPropertyChanged();
+                    // Save settings immediately when changed
+                    // Note: Ideally we should throttle this or save on exit, but for simplicity:
+                    AppSettings.Save(double.NaN, double.NaN, _chargeLimit); // Use NaN to preserve/ignore window pos if logic supports, OR we need to fetch current window pos.
+                    // Actually, AppSettings.Save overwrites everything. We need a better way or just load-modify-save.
+                    // Let's reload to get current window pos, update limit, then save.
+                    var current = AppSettings.Load();
+                    AppSettings.Save(current.WindowLeft, current.WindowTop, _chargeLimit);
+                }
+            }
         }
 
         private bool _isCharging;
@@ -143,6 +234,13 @@ namespace BatteryMonitor3
         {
             get => _isPinned;
             set { _isPinned = value; OnPropertyChanged(); }
+        }
+
+        private bool _isSettingsOpen = false;
+        public bool IsSettingsOpen
+        {
+            get => _isSettingsOpen;
+            set { _isSettingsOpen = value; OnPropertyChanged(); }
         }
     }
 }

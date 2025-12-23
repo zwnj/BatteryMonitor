@@ -8,17 +8,18 @@ namespace BatteryMonitor3
     {
         public double WindowLeft { get; set; } = double.NaN;
         public double WindowTop { get; set; } = double.NaN;
+        public int ChargeLimit { get; set; } = 100;
 
         private static string SettingsPath => Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
             "BatteryMonitor3",
             "settings.json");
 
-        public static void Save(double left, double top)
+        public static void Save(double left, double top, int chargeLimit)
         {
             try
             {
-                var settings = new AppSettings { WindowLeft = left, WindowTop = top };
+                var settings = new AppSettings { WindowLeft = left, WindowTop = top, ChargeLimit = chargeLimit };
                 var dir = Path.GetDirectoryName(SettingsPath);
                 if (!Directory.Exists(dir))
                 {

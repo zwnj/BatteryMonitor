@@ -18,6 +18,7 @@ namespace BatteryMonitor3
             public uint DesignCapacity { get; set; } // mWh
             public uint Percent { get; set; }
             public uint CycleCount { get; set; } // Count
+            public double Temperature { get; set; } // Celsius
         }
 
         public BatteryInfo GetBatteryStatus()
@@ -61,11 +62,10 @@ namespace BatteryMonitor3
             catch (ManagementException)
             {
                 // 主要なWMI情報が取得できなければ、ここで処理を中断
-                // (サイクルカウント取得は試みない)
                 return info;
             }
 
-            // --- 例外が発生しやすい補助情報 (サイクルカウント) ---
+            // --- 補助情報: サイクルカウント ---
             try
             {
                 var cycleCountData = new ManagementObjectSearcher(@"root\WMI", "SELECT * FROM BatteryCycleCount")
@@ -77,8 +77,25 @@ namespace BatteryMonitor3
             }
             catch (ManagementException)
             {
-                // サイクルカウントが取得できなくてもエラーにしない
-                info.CycleCount = 0; // 取得できない場合は0とする
+                info.CycleCount = 0;
+            }
+
+            // --- 補助情報: 温度 (管理者権限が必要) ---
+            try
+            {
+                var thermalData = new ManagementObjectSearcher(@"root\WMI", "SELECT * FROM MSAcpi_ThermalZoneTemperature")
+                    .Get().Cast<ManagementObject>().FirstOrDefault();
+                if (thermalData != null)
+                {
+                    // 単位: 1/10 Kelvin
+                    // Celsius = (K - 273.15)
+                    uint rawTemp = Convert.ToUInt32(thermalData["CurrentTemperature"]);
+                    info.Temperature = (rawTemp / 10.0) - 273.15;
+                }
+            }
+            catch (ManagementException)
+            {
+                info.Temperature = 0;
             }
 
             return info;
