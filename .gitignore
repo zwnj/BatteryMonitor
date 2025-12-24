@@ -37,10 +37,8 @@ project.assets.json
 *.resharper
 _ReSharper*/
 
-# Our custom files
-last_position.txt
-report*.html
-report*.txt
+
 
 # Ignore JetBrains Rider files
 *.sln.iml
+NEW_FEATURES.md
