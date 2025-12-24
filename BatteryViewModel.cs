@@ -242,5 +242,15 @@ namespace BatteryMonitor3
             get => _isSettingsOpen;
             set { _isSettingsOpen = value; OnPropertyChanged(); }
         }
+
+        public bool IsStartupEnabled
+        {
+            get => StartupManager.IsStartupEnabled();
+            set
+            {
+                StartupManager.SetStartup(value);
+                OnPropertyChanged();
+            }
+        }
     }
 }

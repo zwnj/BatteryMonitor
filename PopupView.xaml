@@ -266,6 +266,13 @@
                     <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center">
                         <TextBlock Text="設定" FontSize="20" FontWeight="Bold" Foreground="{DynamicResource PrimaryTextBrush}" HorizontalAlignment="Center" Margin="0,0,0,20"/>
                         
+                        <!-- Startup Checkbox -->
+                        <CheckBox IsChecked="{Binding IsStartupEnabled}" Content="Windows起動時に実行する" Foreground="{DynamicResource PrimaryTextBrush}" Margin="0,0,0,15" HorizontalAlignment="Center">
+                            <CheckBox.LayoutTransform>
+                                <ScaleTransform ScaleX="1.2" ScaleY="1.2"/>
+                            </CheckBox.LayoutTransform>
+                        </CheckBox>
+
                         <TextBlock Text="充電上限 (いたわり充電)" Foreground="{DynamicResource SecondaryTextBrush}" Margin="0,0,0,5"/>
                         <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
                             <TextBox Text="{Binding ChargeLimit, UpdateSourceTrigger=PropertyChanged}" Width="60" FontSize="16" TextAlignment="Center" Background="{DynamicResource CardBackgroundBrush}" Foreground="{DynamicResource PrimaryTextBrush}" BorderBrush="{DynamicResource WindowBorderBrush}" Padding="5"/>
