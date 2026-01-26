@@ -21,7 +21,7 @@
     <SolidColorBrush x:Key="SettingsIconBrush" Color="#424242"/>
 
     <!-- Toggle Switch -->
-    <SolidColorBrush x:Key="ToggleTrackBrush" Color="#4DE5E5E5"/>
+    <SolidColorBrush x:Key="ToggleTrackBrush" Color="#66505050"/>
     
     <!-- Pin Active -->
     <Color x:Key="PinActiveColor">#00FF00</Color>
