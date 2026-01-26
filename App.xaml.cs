@@ -38,6 +38,7 @@ namespace BatteryMonitor3
         private bool _isStickyMode = false;
         private Win32Point _lastHoverPos;
         private DateTime _lastMoveTime;
+        private DateTime _lastRightClickTime = DateTime.MinValue;
 
         // --- State Restoration ---
         private bool _savedStickyMode = false;
@@ -45,12 +46,29 @@ namespace BatteryMonitor3
 
         protected override void OnStartup(StartupEventArgs e)
         {
+            // Global Exception Handling
+            AppDomain.CurrentDomain.UnhandledException += (s, ev) =>
+            {
+                Logger.Error("AppDomain Unhandled Exception", ev.ExceptionObject as Exception);
+            };
+            DispatcherUnhandledException += (s, ev) =>
+            {
+                Logger.Error("Dispatcher Unhandled Exception", ev.Exception);
+                // Optionally allow to continue? For now let's just log. 
+                // Setting Handled = true might prevent crash but could leave app in bad state.
+                // ev.Handled = true; 
+            };
+
+            Logger.Info("Application Startup");
+
             base.OnStartup(e);
             _mainWindow = new MainWindow();
             _notifyIcon = (TaskbarIcon)FindResource("MyNotifyIcon");
             if (_notifyIcon == null) return;
 
             _batteryViewModel = new BatteryViewModel();
+            _notifyIcon.DataContext = _batteryViewModel;
+
             if (_notifyIcon.TrayPopup is FrameworkElement popupContent)
             {
                 popupContent.DataContext = _batteryViewModel;
@@ -60,8 +78,10 @@ namespace BatteryMonitor3
                 popup.Closed += OnPopupClosed;
             }
 
-            _showDelayTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
-            _showDelayTimer.Tick += OnShowTimerTick;
+            Microsoft.Win32.SystemEvents.PowerModeChanged += OnPowerModeChanged;
+
+            _showDelayTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(0.5) };
+                _showDelayTimer.Tick += OnShowTimerTick;
 
             _watchdogTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(200) };
             _watchdogTimer.Tick += WatchdogTimer_Tick;
@@ -69,6 +89,11 @@ namespace BatteryMonitor3
 
             _notifyIcon.TrayMouseMove += MyNotifyIcon_TrayMouseMove;
             _notifyIcon.TrayLeftMouseDown += MyNotifyIcon_TrayLeftMouseDown;
+            _notifyIcon.TrayRightMouseDown += (s, e) => 
+            {
+                _showDelayTimer?.Stop();
+                _lastRightClickTime = DateTime.Now;
+            };
 
 
 
@@ -107,10 +132,9 @@ namespace BatteryMonitor3
                         if (_isStickyMode)
                         {
                             // Returning to Sticky Mode
-                            popup.StaysOpen = false;
                             
                             // To ensure it doesn't close immediately (since we are setting StaysOpen=false),
-                            // we must ensure it has focus/activation.
+                            // we must ensure it has focus/activation FIRST.
                             if (popup.Child is UIElement child)
                             {
                                 if (PresentationSource.FromVisual(child) is System.Windows.Interop.HwndSource source)
@@ -119,6 +143,8 @@ namespace BatteryMonitor3
                                 }
                                 child.Focus();
                             }
+                            
+                            popup.StaysOpen = false;
                         }
                         else
                         {
@@ -130,26 +156,23 @@ namespace BatteryMonitor3
             }
         }
         
-
-
-
-        
-
-
-
-
         protected override void OnExit(ExitEventArgs e)
         {
+            Microsoft.Win32.SystemEvents.PowerModeChanged -= OnPowerModeChanged;
             _notifyIcon?.Dispose();
             _watchdogTimer?.Stop();
             _showDelayTimer?.Stop();
             base.OnExit(e);
+            Logger.Info("Application Exit");
         }
 
         // --- Event Handlers ---
 
         private void MyNotifyIcon_TrayMouseMove(object? sender, RoutedEventArgs e)
         {
+            // If ContextMenu is open, do not start hover logic
+            if (_notifyIcon?.ContextMenu?.IsOpen == true) return;
+
             _lastActivityTime = DateTime.Now;
             _lastMoveTime = DateTime.Now;
             if (GetCursorPos(out Win32Point pt))
@@ -195,12 +218,12 @@ namespace BatteryMonitor3
             _isStickyMode = true;
             if (_notifyIcon?.TrayPopupResolved is Popup popup)
             {
-                popup.StaysOpen = false; // Let WPF handle auto-close on focus loss
-                
                 if (popup.IsOpen)
                 {
-                    // Already open (e.g. from hover), do not call ShowTrayPopup to avoid position reset.
-                    // Instead, ensure focus so standard StaysOpen=false logic works (closes on blur).
+                    // Already open (e.g. from hover). 
+                    // CRITICAL: Ensure focus FIRST before setting StaysOpen=false.
+                    // If we set StaysOpen=false while focus is still on the Tray Icon (Taskbar), 
+                    // the popup will close immediately.
                     if (popup.Child is UIElement child)
                     {
                         if (PresentationSource.FromVisual(child) is System.Windows.Interop.HwndSource source)
@@ -209,10 +232,13 @@ namespace BatteryMonitor3
                         }
                         child.Focus();
                     }
+                    
+                    popup.StaysOpen = false; // Now let WPF handle auto-close on focus loss
                 }
                 else
                 {
                     // Not open, show it normally
+                    popup.StaysOpen = false;
                     _notifyIcon.ShowTrayPopup();
                 }
             }
@@ -221,6 +247,12 @@ namespace BatteryMonitor3
         private void OnShowTimerTick(object? sender, EventArgs e)
         {
             _showDelayTimer?.Stop();
+            
+            // If ContextMenu opened while waiting, abort
+            if (_notifyIcon?.ContextMenu?.IsOpen == true) return;
+
+            // Grace period: If right click happened recently (e.g. < 1.0s), suppress hover
+            if ((DateTime.Now - _lastRightClickTime).TotalSeconds < 1.0) return;
             
             // 1. Check time: Has it been recently over the icon? (redundant if using distance, but keeps logic consistent)
             // 2. Check distance: Is the mouse still near the last known tray icon position?
@@ -338,6 +370,11 @@ namespace BatteryMonitor3
         private void Exit_Click(object? sender, RoutedEventArgs e)
         {
             this.Shutdown();
+        }
+
+        private void OnPowerModeChanged(object sender, Microsoft.Win32.PowerModeChangedEventArgs e)
+        {
+            Logger.Info($"PowerModeChanged: {e.Mode}");
         }
     }
 }

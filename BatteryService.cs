@@ -21,6 +21,8 @@ namespace BatteryMonitor3
             public double Temperature { get; set; } // Celsius
         }
 
+        private bool _supportsTemperature = true;
+
         public BatteryInfo GetBatteryStatus()
         {
             var info = new BatteryInfo();
@@ -59,9 +61,10 @@ namespace BatteryMonitor3
                     info.Percent = (uint)Math.Min(100, (100.0 * info.RemainingCapacity / info.FullChargedCapacity));
                 }
             }
-            catch (ManagementException)
+            catch (ManagementException ex)
             {
                 // 主要なWMI情報が取得できなければ、ここで処理を中断
+                Logger.Error("Failed to get primary battery info", ex);
                 return info;
             }
 
@@ -75,25 +78,35 @@ namespace BatteryMonitor3
                     info.CycleCount = Convert.ToUInt32(cycleCountData["CycleCount"]);
                 }
             }
-            catch (ManagementException)
+            catch (ManagementException ex)
             {
+                Logger.Error("Failed to get cycle count", ex);
                 info.CycleCount = 0;
             }
 
             // --- 補助情報: 温度 (管理者権限が必要) ---
-            try
+            if (_supportsTemperature)
             {
-                var thermalData = new ManagementObjectSearcher(@"root\WMI", "SELECT * FROM MSAcpi_ThermalZoneTemperature")
-                    .Get().Cast<ManagementObject>().FirstOrDefault();
-                if (thermalData != null)
+                try
                 {
-                    // 単位: 1/10 Kelvin
-                    // Celsius = (K - 273.15)
-                    uint rawTemp = Convert.ToUInt32(thermalData["CurrentTemperature"]);
-                    info.Temperature = (rawTemp / 10.0) - 273.15;
+                    var thermalData = new ManagementObjectSearcher(@"root\WMI", "SELECT * FROM MSAcpi_ThermalZoneTemperature")
+                        .Get().Cast<ManagementObject>().FirstOrDefault();
+                    if (thermalData != null)
+                    {
+                        // 単位: 1/10 Kelvin
+                        // Celsius = (K - 273.15)
+                        uint rawTemp = Convert.ToUInt32(thermalData["CurrentTemperature"]);
+                        info.Temperature = (rawTemp / 10.0) - 273.15;
+                    }
+                }
+                catch (ManagementException ex)
+                {
+                    Logger.Error("Failed to get temperature (Disabling temperature check)", ex);
+                    _supportsTemperature = false;
+                    info.Temperature = 0;
                 }
             }
-            catch (ManagementException)
+            else
             {
                 info.Temperature = 0;
             }

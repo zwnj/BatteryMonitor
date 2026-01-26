@@ -2,11 +2,11 @@
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
                     xmlns:sys="clr-namespace:System;assembly=mscorlib">
     <!-- Window/Background (Windows 11 Mica-like light gray) -->
-    <SolidColorBrush x:Key="WindowBackgroundBrush" Color="#F3F3F3"/>
+    <SolidColorBrush x:Key="WindowBackgroundBrush" Color="#1AFFFFFF"/>
     <SolidColorBrush x:Key="WindowBorderBrush" Color="#E5E5E5"/>
     
     <!-- Cards/Panels (White with subtle elevation/separation) -->
-    <SolidColorBrush x:Key="CardBackgroundBrush" Color="#FFFFFF"/>
+    <SolidColorBrush x:Key="CardBackgroundBrush" Color="#4DFFFFFF"/>
     
     <!-- Text -->
     <SolidColorBrush x:Key="PrimaryTextBrush" Color="#1A1A1A"/>
@@ -18,7 +18,10 @@
     <SolidColorBrush x:Key="ChargingStatusBrush" Color="#008000"/> <!-- Darker Green for visibility on light bg -->
     
     <!-- Icons/UI -->
-    <SolidColorBrush x:Key="SettingsIconBrush" Color="#1A1A1A"/>
+    <SolidColorBrush x:Key="SettingsIconBrush" Color="#424242"/>
+
+    <!-- Toggle Switch -->
+    <SolidColorBrush x:Key="ToggleTrackBrush" Color="#4DE5E5E5"/>
     
     <!-- Pin Active -->
     <Color x:Key="PinActiveColor">#00FF00</Color>

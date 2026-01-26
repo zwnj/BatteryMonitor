@@ -10,9 +10,9 @@
             </ResourceDictionary.MergedDictionaries>
 
             <tb:TaskbarIcon x:Key="MyNotifyIcon"
-                        IconSource="battery.ico"
+                        IconSource="{Binding TrayIconSource}"
                         PopupActivation="None"
-                        ToolTipText="Battery Monitor">
+                        ToolTipText="Battery Monitor beta">
             
                 <tb:TaskbarIcon.TrayPopup>
                     <local:PopupView />

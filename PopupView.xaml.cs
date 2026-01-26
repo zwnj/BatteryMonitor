@@ -3,6 +3,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Input;
+using System.Windows.Interop;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
 
@@ -57,6 +58,13 @@ namespace BatteryMonitor3
             {
                 ThemeToggle.IsChecked = ThemeManager.CurrentTheme == ThemeType.Dark;
             }
+
+            // Apply Acrylic Effect with correct tint
+            if (PresentationSource.FromVisual(this) is HwndSource source)
+            {
+                bool isDark = ThemeManager.CurrentTheme == ThemeType.Dark;
+                WindowBackdrop.ApplyAcrylic(source.Handle, isDark);
+            }
         }
 
         private void OnThemeToggleClick(object sender, RoutedEventArgs e)
@@ -108,6 +116,14 @@ namespace BatteryMonitor3
                 if (!double.IsNaN(settings.WindowTop))
                 {
                     _parentPopup.VerticalOffset = settings.WindowTop;
+                }
+
+                // Apply Acrylic Effect
+                if (PresentationSource.FromVisual(this) is HwndSource source)
+                {
+                    bool isDark = ThemeManager.CurrentTheme == ThemeType.Dark;
+                    WindowBackdrop.ApplyAcrylic(source.Handle, isDark);
+                    WindowBackdrop.SetRoundedCorners(source.Handle);
                 }
             }
         }

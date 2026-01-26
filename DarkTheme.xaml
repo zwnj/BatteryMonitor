@@ -2,11 +2,11 @@
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
                     xmlns:sys="clr-namespace:System;assembly=mscorlib">
     <!-- Window/Background -->
-    <SolidColorBrush x:Key="WindowBackgroundBrush" Color="#1E1E1E"/>
+    <SolidColorBrush x:Key="WindowBackgroundBrush" Color="#331E1E1E"/>
     <SolidColorBrush x:Key="WindowBorderBrush" Color="#333333"/>
     
     <!-- Cards/Panels -->
-    <SolidColorBrush x:Key="CardBackgroundBrush" Color="#2D2D30"/>
+    <SolidColorBrush x:Key="CardBackgroundBrush" Color="#662D2D30"/>
     
     <!-- Text -->
     <SolidColorBrush x:Key="PrimaryTextBrush" Color="White"/>
@@ -20,6 +20,9 @@
     <!-- Icons/UI -->
     <SolidColorBrush x:Key="IconDefaultBrush" Color="Gray"/>
     <SolidColorBrush x:Key="SettingsIconBrush" Color="White"/>
+    
+    <!-- Toggle Switch -->
+    <SolidColorBrush x:Key="ToggleTrackBrush" Color="#6634323D"/>
     
     <!-- Pin Active -->
     <Color x:Key="PinActiveColor">#00FF00</Color>

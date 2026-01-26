@@ -108,7 +108,7 @@
                             <ToggleButton.Template>
                                 <ControlTemplate TargetType="ToggleButton">
                                     <Grid>
-                                        <Border x:Name="Track" Background="#E5E5E5" CornerRadius="12" BorderBrush="{x:Null}"/>
+                                        <Border x:Name="Track" Background="{DynamicResource ToggleTrackBrush}" CornerRadius="12" BorderBrush="{x:Null}"/>
                                         <Grid x:Name="Thumb" Width="18" Height="18" HorizontalAlignment="Left" Margin="3,0,0,0">
                                             <Grid.RenderTransform>
                                                 <TranslateTransform X="0" Y="0"/>
@@ -125,8 +125,7 @@
                                     </Grid>
                                     <ControlTemplate.Triggers>
                                         <Trigger Property="IsChecked" Value="True">
-                                            <!-- Dark Mode State Static Setters -->
-                                            <Setter TargetName="Track" Property="Background" Value="#34323D"/>
+                                            <!-- Dark Mode State Static Setters - REMOVED Background setter as it's now handled by DynamicResource -->
                                             
                                             <Trigger.EnterActions>
                                                 <BeginStoryboard>
