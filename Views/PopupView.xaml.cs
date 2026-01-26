@@ -7,7 +7,11 @@ using System.Windows.Interop;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
 
-namespace BatteryMonitor3   
+using BatteryMonitor3.Services;
+using BatteryMonitor3.Helpers;
+using BatteryMonitor3.Models;
+
+namespace BatteryMonitor3.Views
 {
     /// <summary>
     /// Interaction logic for PopupView.xaml

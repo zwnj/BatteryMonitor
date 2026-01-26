@@ -4,7 +4,11 @@ using System.Runtime.CompilerServices;
 using System.Windows.Media;
 using System.Windows.Input;
 
-namespace BatteryMonitor3
+using BatteryMonitor3.Services;
+using BatteryMonitor3.Helpers;
+using BatteryMonitor3.Models;
+
+namespace BatteryMonitor3.ViewModels
 {
     public class BatteryViewModel : INotifyPropertyChanged
     {
@@ -19,7 +23,7 @@ namespace BatteryMonitor3
             _service = new BatteryService();
             // Initialize SVG generator
             // Assuming test.svg is in the BaseDirectory
-            string svgPath = System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "test.svg");
+            string svgPath = System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Images", "battery_template.svg");
             _iconGenerator = new SvgIconGenerator(svgPath);
 
             var settings = AppSettings.Load();

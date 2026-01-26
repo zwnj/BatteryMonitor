@@ -1,9 +1,10 @@
-<UserControl x:Class="BatteryMonitor3.PopupView"
+<UserControl x:Class="BatteryMonitor3.Views.PopupView"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
-             xmlns:local="clr-namespace:BatteryMonitor3"
+             xmlns:views="clr-namespace:BatteryMonitor3.Views"
+             xmlns:helpers="clr-namespace:BatteryMonitor3.Helpers"
              mc:Ignorable="d" 
              d:DesignHeight="450" d:DesignWidth="320">
     <Grid>
@@ -62,7 +63,7 @@
                     <RowDefinition Height="*"/>
                 </Grid.RowDefinitions>
                 <Grid.Resources>
-                    <local:PinColorConverter x:Key="PinColorConverter"/>
+                    <helpers:PinColorConverter x:Key="PinColorConverter"/>
                     <Style x:Key="StatusTextStyle" TargetType="TextBlock">
                         <Setter Property="Foreground" Value="{DynamicResource OrdinaryStatusBrush}"/>
                         <Style.Triggers>

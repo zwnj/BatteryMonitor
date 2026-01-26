@@ -3,7 +3,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Reflection;
 
-namespace BatteryMonitor3
+namespace BatteryMonitor3.Services
 {
     public static class StartupManager
     {

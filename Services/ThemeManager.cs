@@ -2,7 +2,7 @@ using System;
 using System.Linq;
 using System.Windows;
 
-namespace BatteryMonitor3
+namespace BatteryMonitor3.Services
 {
     public enum ThemeType
     {
@@ -61,7 +61,7 @@ namespace BatteryMonitor3
 
         public static Uri GetThemeUri(ThemeType theme)
         {
-            return new Uri(theme == ThemeType.Dark ? "DarkTheme.xaml" : "LightTheme.xaml", UriKind.Relative);
+            return new Uri(theme == ThemeType.Dark ? "Views/Themes/DarkTheme.xaml" : "Views/Themes/LightTheme.xaml", UriKind.Relative);
         }
     }
 }

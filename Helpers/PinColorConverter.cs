@@ -3,7 +3,7 @@ using System.Globalization;
 using System.Windows.Data;
 using System.Windows.Media;
 
-namespace BatteryMonitor3
+namespace BatteryMonitor3.Helpers
 {
     public class PinColorConverter : IValueConverter
     {

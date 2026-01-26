@@ -4,7 +4,9 @@ using System.Windows;
 using System.Windows.Input;
 using System.Windows.Threading;
 
-namespace BatteryMonitor3
+using BatteryMonitor3.ViewModels;
+
+namespace BatteryMonitor3.Views
 {
     public partial class MainWindow : Window
     {

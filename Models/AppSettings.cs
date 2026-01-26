@@ -2,7 +2,7 @@ using System;
 using System.IO;
 using System.Text.Json;
 
-namespace BatteryMonitor3
+namespace BatteryMonitor3.Models
 {
     public class AppSettings
     {
