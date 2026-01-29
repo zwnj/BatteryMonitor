@@ -52,24 +52,34 @@ namespace BatteryMonitor3.Helpers
                 levelRect.Width = new SvgUnit(SvgUnitType.Pixel, newWidth);
 
                 // Update Color based on level
-                if (batteryPercentage <= 20)
+                if (isCharging == true)
                 {
-                    levelRect.Fill = new SvgColourServer(System.Drawing.Color.Red);
-                }
-                else if (batteryPercentage <= 50)
-                {
-                    levelRect.Fill = new SvgColourServer(System.Drawing.Color.Orange); // #FFC107 equivalent-ish
+                    // Charging: Green + Lightning Bolt
+                    levelRect.Fill = new SvgColourServer(System.Drawing.Color.LimeGreen); 
                 }
                 else
                 {
-                     levelRect.Fill = new SvgColourServer(System.Drawing.ColorTranslator.FromHtml("#4EC9B0")); // VS Class Cyan
+                    // Not Charging: Level based color
+                    if (batteryPercentage <= 20)
+                    {
+                        levelRect.Fill = new SvgColourServer(System.Drawing.Color.Red);
+                    }
+                    else if (batteryPercentage <= 50)
+                    {
+                        levelRect.Fill = new SvgColourServer(System.Drawing.Color.Orange); 
+                    }
+                    else
+                    {
+                        levelRect.Fill = new SvgColourServer(System.Drawing.ColorTranslator.FromHtml("#4EC9B0")); 
+                    }
                 }
-                
-                // If specific check for charging color is needed
-                if (isCharging == true)
-                {
-                    // Maybe green or blue for charging? For now keep level based.
-                }
+            }
+
+            // 3. Update Charging Bolt Visibility
+            var boltPath = _svgDoc.GetElementById<SvgPath>("charging-bolt");
+            if (boltPath != null)
+            {
+                boltPath.Visibility = (isCharging == true) ? "visible" : "hidden";
             }
 
             // 3. Render to Bitmap

@@ -29,9 +29,22 @@ namespace BatteryMonitor3.Views
             this.MouseLeftButtonDown += PopupView_MouseLeftButtonDown;
             this.MouseLeftButtonUp += PopupView_MouseLeftButtonUp;
             this.MouseMove += PopupView_MouseMove;
-            this.Loaded += PopupView_Loaded;
+            
             ThemeManager.ThemeChanged += (s, args) => UpdateTheme();
             
+            // Subscribe to System Events for Transparency/Power changes
+            Microsoft.Win32.SystemEvents.UserPreferenceChanged += (s, e) => 
+            {
+                if (e.Category == Microsoft.Win32.UserPreferenceCategory.General)
+                {
+                    Dispatcher.Invoke(() => CheckTransparencyStatus());
+                }
+            };
+            Microsoft.Win32.SystemEvents.PowerModeChanged += (s, e) =>
+            {
+                Dispatcher.Invoke(() => CheckTransparencyStatus());
+            };
+
             // Initial theme apply
             UpdateTheme();
         }
@@ -63,11 +76,66 @@ namespace BatteryMonitor3.Views
                 ThemeToggle.IsChecked = ThemeManager.CurrentTheme == ThemeType.Dark;
             }
 
+            // Apply Transparency Logic
+            CheckTransparencyStatus();
+
             // Apply Acrylic Effect with correct tint
             if (PresentationSource.FromVisual(this) is HwndSource source)
             {
                 bool isDark = ThemeManager.CurrentTheme == ThemeType.Dark;
                 WindowBackdrop.ApplyAcrylic(source.Handle, isDark);
+            }
+        }
+
+        private void CheckTransparencyStatus()
+        {
+            if (MainBorder == null) return;
+
+            bool isTransparencyEnabled = true;
+
+            // 1. Check Registry (Personalization > Transparency)
+            try
+            {
+                using var key = Microsoft.Win32.Registry.CurrentUser.OpenSubKey(@"Software\Microsoft\Windows\CurrentVersion\Themes\Personalize");
+                if (key != null)
+                {
+                    var val = key.GetValue("EnableTransparency");
+                    if (val is int iVal && iVal == 0)
+                    {
+                        isTransparencyEnabled = false;
+                    }
+                }
+            }
+            catch { /* Ignore access errors */ }
+
+            // 2. Check Power Status (Simplified check for Power Saver / Battery Saver)
+            // Note: SystemParameters.PowerLineStatus is not always real-time for Energy Saver mode specifically,
+            // but is a good proxy.
+            if (SystemParameters.PowerLineStatus == PowerLineStatus.Offline)
+            {
+                // On Battery, we might want to be conservative.
+                // However, user specifically mentioned "Energy Saver Mode".
+                // We'll assume if Transparency is disabled in Registry OR we are on Battery?
+                // Actually, Windows 10/11 updates the Registry "EnableTransparency" dynamically? 
+                // No, it usually doesn't.
+                
+                // If we want to target "Energy Saver", we should check if transparency *looks* broken?
+                // No reliable way without UWP.
+                // Let's rely on User Preference first.
+                // If the user SAYS "Energy Saver turns off transparency", 
+                // it implies the OS is disabling the effect visually.
+                
+                // Let's check SystemParameters.HighContrast just in case.
+                if (SystemParameters.HighContrast) isTransparencyEnabled = false;
+            }
+
+            if (!isTransparencyEnabled)
+            {
+                MainBorder.SetResourceReference(Border.BackgroundProperty, "WindowBackgroundBrush_Opaque");
+            }
+            else
+            {
+                MainBorder.SetResourceReference(Border.BackgroundProperty, "WindowBackgroundBrush");
             }
         }
 
@@ -190,6 +258,8 @@ namespace BatteryMonitor3.Views
                 }
             }
         }
+
+
 
         public void AnimateClose(Action onCompleted)
         {

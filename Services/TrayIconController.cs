@@ -118,6 +118,117 @@ namespace BatteryMonitor3.Services
             }
         }
 
+        [System.Runtime.InteropServices.DllImport("user32.dll")]
+        private static extern IntPtr GetForegroundWindow();
+
+        [System.Runtime.InteropServices.DllImport("user32.dll")]
+        private static extern uint GetWindowThreadProcessId(IntPtr hWnd, IntPtr ProcessId);
+
+        [System.Runtime.InteropServices.DllImport("user32.dll")]
+        private static extern bool AttachThreadInput(uint idAttach, uint idAttachTo, bool fAttach);
+
+        [System.Runtime.InteropServices.DllImport("user32.dll")]
+        private static extern IntPtr SetFocus(IntPtr hWnd);
+
+        [System.Runtime.InteropServices.DllImport("user32.dll")]
+        private static extern IntPtr SetActiveWindow(IntPtr hWnd);
+
+        [System.Runtime.InteropServices.DllImport("kernel32.dll")]
+        private static extern uint GetCurrentThreadId();
+
+        private bool ForceForegroundWindow(IntPtr hWnd)
+        {
+            uint foreThread = GetWindowThreadProcessId(GetForegroundWindow(), IntPtr.Zero);
+            uint appThread = GetCurrentThreadId();
+            bool threadsAttached = false;
+            bool success = false;
+
+            try
+            {
+                if (foreThread != appThread)
+                {
+                    threadsAttached = AttachThreadInput(foreThread, appThread, true);
+                    if (threadsAttached)
+                    {
+                        // Bring to foreground
+                        success = SetForegroundWindow(hWnd);
+                        // Also try SetActiveWindow and SetFocus to be sure
+                        SetActiveWindow(hWnd);
+                        SetFocus(hWnd);
+                    }
+                    else
+                    {
+                        Logger.Info($"AttachThreadInput failed. ForeThread={foreThread}, AppThread={appThread}");
+                    }
+                }
+                else
+                {
+                    success = SetForegroundWindow(hWnd);
+                    SetActiveWindow(hWnd);
+                    SetFocus(hWnd);
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.Error("ForceForegroundWindow failed", ex);
+            }
+            finally
+            {
+                if (threadsAttached)
+                {
+                    AttachThreadInput(foreThread, appThread, false);
+                }
+            }
+            return success;
+        }
+
+        public void ShowTrayPopup()
+        {
+            if (_notifyIcon?.TrayPopupResolved is Popup popup)
+            {
+                if (popup.IsOpen)
+                {
+                    // Pinned (固定モード) の場合はショートカットで閉じない
+                    if (_isPinnedDelegate()) return;
+
+                    // Toggle: 既に開いている場合は閉じる
+                    popup.StaysOpen = false;
+                    _notifyIcon.CloseTrayPopup();
+                }
+                else
+                {
+                    // Open: 新規に開く
+                    _isStickyMode = true; // クリック扱い
+                    popup.StaysOpen = false; // フォーカスが外れたら閉じる挙動
+                    _notifyIcon.ShowTrayPopup();
+                    
+                    // 表示直後にフォーカスをあてる
+                    // HACK: グローバルショートカット経由だとバックグラウンドプロセス扱いになるため、
+                    // AttachThreadInputを使って無理やり最前面化する
+                    if (popup.Child is UIElement child)
+                    {
+                        // Use a slightly lower priority than Loaded to ensure visual tree is ready? 
+                        // Actually Loaded is good.
+                        child.Dispatcher.BeginInvoke(DispatcherPriority.Loaded, new Action(() => 
+                        {
+                            bool foreResult = false;
+                            if (PresentationSource.FromVisual(child) is System.Windows.Interop.HwndSource source)
+                            {
+                                foreResult = ForceForegroundWindow(source.Handle);
+                            }
+                            
+                            bool focusResult = child.Focus();
+                            // Do NOT capture mouse manually; it prevents external clicks from activating other windows,
+                            // which breaks StaysOpen=false logic.
+                            // bool captureResult = Mouse.Capture(child);
+
+                            Logger.Info($"Shortcut Activation: Foreground={foreResult}, Focus={focusResult}");
+                        }));
+                    }
+                }
+            }
+        }
+
         private void MyNotifyIcon_TrayMouseMove(object? sender, RoutedEventArgs e)
         {
             // If ContextMenu is open, do not start hover logic

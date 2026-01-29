@@ -9,6 +9,7 @@ using System.Windows.Media;
 
 using BatteryMonitor3.Helpers;
 using BatteryMonitor3.Services;
+using BatteryMonitor3.Services.Keyboard;
 using BatteryMonitor3.ViewModels;
 using BatteryMonitor3.Views;
 
@@ -20,6 +21,7 @@ namespace BatteryMonitor3
         private Views.MainWindow? _mainWindow;
         private BatteryViewModel? _batteryViewModel;
         private TrayIconController? _trayIconController;
+        private KeyboardHookService? _keyboardHookService;
 
         protected override void OnStartup(StartupEventArgs e)
         {
@@ -51,6 +53,21 @@ namespace BatteryMonitor3
             // Initialize Controller
             _trayIconController = new TrayIconController(_notifyIcon, () => _batteryViewModel?.IsPinned ?? false);
 
+            // Initialize Keyboard Hook
+            try
+            {
+                _keyboardHookService = new KeyboardHookService();
+                _keyboardHookService.TriggerActivated += (s, args) =>
+                {
+                    // UIスレッドで実行
+                    Dispatcher.Invoke(() => _trayIconController?.ShowTrayPopup());
+                };
+            }
+            catch (Exception ex)
+            {
+                Logger.Error("Failed to initialize KeyboardHookService", ex);
+            }
+
             Microsoft.Win32.SystemEvents.PowerModeChanged += OnPowerModeChanged;
 
             // Data updates
@@ -75,6 +92,7 @@ namespace BatteryMonitor3
             Microsoft.Win32.SystemEvents.PowerModeChanged -= OnPowerModeChanged;
             _notifyIcon?.Dispose();
             _trayIconController?.Dispose();
+            _keyboardHookService?.Dispose();
             base.OnExit(e);
             Logger.Info("Application Exit");
         }

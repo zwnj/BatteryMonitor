@@ -3,6 +3,7 @@
                     xmlns:sys="clr-namespace:System;assembly=mscorlib">
     <!-- Window/Background (Windows 11 Mica-like light gray) -->
     <SolidColorBrush x:Key="WindowBackgroundBrush" Color="#1AFFFFFF"/>
+    <SolidColorBrush x:Key="WindowBackgroundBrush_Opaque" Color="#FFFFFFFF"/>
     <SolidColorBrush x:Key="WindowBorderBrush" Color="#E5E5E5"/>
     
     <!-- Cards/Panels (White with subtle elevation/separation) -->
