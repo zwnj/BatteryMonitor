@@ -88,10 +88,10 @@ namespace BatteryMonitor3.Helpers
         {
             if (hwnd == IntPtr.Zero) return;
 
-            // Note: We skip the Windows 11 DWMWA_SYSTEMBACKDROP_TYPE API because it enforces system theme (Light/Dark).
-            // To consistently show a "Dark" blur regardless of system theme, we use the SetWindowCompositionAttribute API.
+            // 注意: Windows 11 の DWMWA_SYSTEMBACKDROP_TYPE API はシステムのテーマ設定(ライト/ダーク)を強制するためスキップします。
+            // システムのテーマに関わらず一貫して「ダーク」なブラーを表示するため、SetWindowCompositionAttribute API を使用します。
 
-            int tintColor = isDark ? unchecked((int)0x99000000) : unchecked((int)0x99FFFFFF); // AABBGGRR - Dark (Black) vs Light (White) tint
+            int tintColor = isDark ? unchecked((int)0x99000000) : unchecked((int)0x99FFFFFF); // AABBGGRR - ダーク(黒) vs ライト(白) の色合い
 
             var accent = new AccentPolicy
             {

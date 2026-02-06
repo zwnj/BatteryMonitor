@@ -42,3 +42,5 @@ _ReSharper*/
 # Ignore JetBrains Rider files
 *.sln.iml
 NEW_FEATURES.md
+drag_implementation_analysis.md
+

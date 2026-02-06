@@ -13,6 +13,7 @@ namespace BatteryMonitor3.ViewModels
     public class BatteryViewModel : INotifyPropertyChanged
     {
         private readonly BatteryService _service;
+        private bool _isUpdating = false;
 
         public event PropertyChangedEventHandler? PropertyChanged;
 
@@ -21,8 +22,8 @@ namespace BatteryMonitor3.ViewModels
         public BatteryViewModel()
         {
             _service = new BatteryService();
-            // Initialize SVG generator
-            // Assuming test.svg is in the BaseDirectory
+            // SVGジェネレーターを初期化
+            // BaseDirectory に test.svg (または battery_template.svg) があると仮定
             string svgPath = System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Images", "battery_template.svg");
             _iconGenerator = new SvgIconGenerator(svgPath);
 
@@ -40,11 +41,25 @@ namespace BatteryMonitor3.ViewModels
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
         }
 
-        public void UpdateData()
+        public async void UpdateData()
         {
+            if (_isUpdating) return;
+            _isUpdating = true;
+
             try
             {
-                var data = _service.GetBatteryStatus();
+                // バックグラウンドスレッドでデータを取得・生成
+                var result = await System.Threading.Tasks.Task.Run(() => 
+                {
+                    var data = _service.GetBatteryStatus();
+                    var icon = _iconGenerator.GenerateIcon((int)data.Percent, data.IsCharging);
+                    return new { Data = data, Icon = icon };
+                });
+
+                var data = result.Data;
+                var icon = result.Icon;
+
+                // --- UIスレッドでの更新処理 ---
 
                 // 1. 電力 (W)
                 double powerW = (data.IsCharging ? data.ChargeRate : data.DischargeRate) / 1000.0;
@@ -133,11 +148,15 @@ namespace BatteryMonitor3.ViewModels
                 CapacityDetail = $"{remWh:F1} / {fullWh:F1} Wh";
 
                 // Update Icon
-                TrayIconSource = _iconGenerator.GenerateIcon((int)data.Percent, data.IsCharging);
+                TrayIconSource = icon;
             }
             catch (Exception ex)
             {
                 Logger.Error("Error in UpdateData", ex);
+            }
+            finally
+            {
+                _isUpdating = false;
             }
         }
 
@@ -193,7 +212,7 @@ namespace BatteryMonitor3.ViewModels
             set { _health = value; OnPropertyChanged(); }
         }
 
-        // --- Phase 2 New Properties ---
+        // --- フェーズ2 新規プロパティ ---
         private string _remainingTime = "--";
         public string RemainingTime
         {
@@ -225,11 +244,11 @@ namespace BatteryMonitor3.ViewModels
                 {
                     _chargeLimit = value; 
                     OnPropertyChanged();
-                    // Save settings immediately when changed
-                    // Note: Ideally we should throttle this or save on exit, but for simplicity:
-                    AppSettings.Save(double.NaN, double.NaN, _chargeLimit); // Use NaN to preserve/ignore window pos if logic supports, OR we need to fetch current window pos.
-                    // Actually, AppSettings.Save overwrites everything. We need a better way or just load-modify-save.
-                    // Let's reload to get current window pos, update limit, then save.
+                    // 変更があった場合、設定を即座に保存
+                    // 注意: 本来はスロットリングを行うか、終了時に保存すべきだが、簡略化のためここで保存
+                    AppSettings.Save(double.NaN, double.NaN, _chargeLimit); // Window位置を維持または無視するためにNaNを使用
+
+                    // AppSettings.Saveは上書きするため、現在の設定を読み込んでから保存し直す
                     var current = AppSettings.Load();
                     AppSettings.Save(current.WindowLeft, current.WindowTop, _chargeLimit);
                 }

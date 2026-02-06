@@ -23,14 +23,11 @@ namespace BatteryMonitor3.Services
                 var appResources = Application.Current.Resources;
                 var uri = GetThemeUri(theme);
                 
-                // Load the new theme dictionary
-                var newDict = new ResourceDictionary
-                {
-                    Source = uri
-                };
+                // 新しいテーマ辞書を読み込み
+                var newDict = new ResourceDictionary { Source = uri };
 
-                // Remove logic: Find any existing theme dictionaries and remove them
-                // We identify them by source URI ending in DarkTheme.xaml or LightTheme.xaml
+                // 削除ロジック: 既存のテーマ辞書を探して削除する
+                // ソースURIが DarkTheme.xaml または LightTheme.xaml で終わるものを識別
                 var oldDicts = appResources.MergedDictionaries
                     .Where(d => d.Source != null && 
                                 (d.Source.OriginalString.EndsWith("DarkTheme.xaml") || 
@@ -42,7 +39,7 @@ namespace BatteryMonitor3.Services
                     appResources.MergedDictionaries.Remove(oldDict);
                 }
 
-                // Add the new theme
+                // 新しいテーマを追加
                 appResources.MergedDictionaries.Add(newDict);
                 CurrentTheme = theme;
                 
@@ -50,7 +47,7 @@ namespace BatteryMonitor3.Services
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"Error switching theme: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"テーマ切り替えエラー: {ex.Message}");
             }
         }
 

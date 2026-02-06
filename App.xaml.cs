@@ -25,7 +25,7 @@ namespace BatteryMonitor3
 
         protected override void OnStartup(StartupEventArgs e)
         {
-            // Global Exception Handling
+            // グローバル例外ハンドリング
             AppDomain.CurrentDomain.UnhandledException += (s, ev) =>
             {
                 Logger.Error("AppDomain Unhandled Exception", ev.ExceptionObject as Exception);
@@ -50,10 +50,10 @@ namespace BatteryMonitor3
                 popupContent.DataContext = _batteryViewModel;
             }
             
-            // Initialize Controller
+            // コントローラーの初期化
             _trayIconController = new TrayIconController(_notifyIcon, () => _batteryViewModel?.IsPinned ?? false);
 
-            // Initialize Keyboard Hook
+            // キーボードフックの初期化
             try
             {
                 _keyboardHookService = new KeyboardHookService();
@@ -70,7 +70,7 @@ namespace BatteryMonitor3
 
             Microsoft.Win32.SystemEvents.PowerModeChanged += OnPowerModeChanged;
 
-            // Data updates
+            // データ更新
             _batteryViewModel.UpdateData();
             _batteryViewModel.PropertyChanged += ViewModel_PropertyChanged;
 

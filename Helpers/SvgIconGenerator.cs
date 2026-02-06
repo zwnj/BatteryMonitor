@@ -22,9 +22,9 @@ namespace BatteryMonitor3.Helpers
             }
             else
             {
-                // Fallback or throw? constructing a default doc might be better safe
+                // フォールバックまたは例外送出？安全策としてデフォルトのドキュメントを作成
                 _svgDoc = new SvgDocument();
-                Logger.Error($"SVG file not found at: {_svgPath}");
+                Logger.Error($"SVGファイルが見つかりません: {_svgPath}");
             }
         }
 
@@ -32,7 +32,7 @@ namespace BatteryMonitor3.Helpers
         {
             if (_svgDoc == null) return null;
 
-            // 1. Update Text - REMOVED
+            // 1. テキストの更新 - 削除済み
             // var textElement = _svgDoc.GetElementById<SvgText>("battery-text");
             // if (textElement != null)
             // {
@@ -40,26 +40,26 @@ namespace BatteryMonitor3.Helpers
             //     textElement.TextAnchor = SvgTextAnchor.Middle; 
             // }
 
-            // 2. Update Level Rect
-            // The max width for 100% seems to be 99 based on "battery-inner" width=99
-            // But the initial rect width is 49.5.
-            // Let's assume 0-100 maps to 0-99 width.
+            // 2. レベル矩形の更新
+            // SVGの "battery-inner" の幅に基づくと100%の最大幅は99のようだが
+            // 初期矩形の幅は49.5。
+            // 0-100 を 0-99 の幅にマッピングすると仮定。
             var levelRect = _svgDoc.GetElementById<SvgRectangle>("battery-level-rect");
             if (levelRect != null)
             {
-                float maxWidth = 108f; // Reverted for 4px stroke SVG (inner width 108)
+                float maxWidth = 108f; // 4pxストロークSVG用に戻しました (内部幅108)
                 float newWidth = (Math.Max(0, Math.Min(100, batteryPercentage)) / 100f) * maxWidth;
                 levelRect.Width = new SvgUnit(SvgUnitType.Pixel, newWidth);
 
-                // Update Color based on level
+                // レベルに基づいて色を更新
                 if (isCharging == true)
                 {
-                    // Charging: Green + Lightning Bolt
+                    // 充電中: 緑 + 雷マーク
                     levelRect.Fill = new SvgColourServer(System.Drawing.Color.LimeGreen); 
                 }
                 else
                 {
-                    // Not Charging: Level based color
+                    // 充電中でない: 残量に基づく色
                     if (batteryPercentage <= 20)
                     {
                         levelRect.Fill = new SvgColourServer(System.Drawing.Color.Red);
@@ -75,19 +75,19 @@ namespace BatteryMonitor3.Helpers
                 }
             }
 
-            // 3. Update Charging Bolt Visibility
+            // 3. 充電雷マークの可視性更新
             var boltPath = _svgDoc.GetElementById<SvgPath>("charging-bolt");
             if (boltPath != null)
             {
                 boltPath.Visibility = (isCharging == true) ? "visible" : "hidden";
             }
 
-            // 3. Render to Bitmap
-            // Target size: standard tray icon size is often 16x16, 32x32.
-            // But we can render larger and let WPF scale it. 120x120 is the SVG viewbox.
-            // Let's render at 128x128 for crispness or keep aspect ratio.
+            // 3. ビットマップへのレンダリング
+            // 目標サイズ: 標準的なトレイアイコンサイズは16x16, 32x32など。
+            // しかし、より大きくレンダリングしてWPFに縮小させることも可能。SVGのViewBoxは120x120。
+            // 鮮明さを保つため、あるいはアスペクト比を維持するために128x128でレンダリング。
             
-            using var bitmap = _svgDoc.Draw(); // Draws at ViewBox size (120x120) or defined Width/Height
+            using var bitmap = _svgDoc.Draw(); // ViewBoxサイズ (120x120) または定義されたWidth/Heightで描画
             
             return BitmapToImageSource(bitmap);
         }

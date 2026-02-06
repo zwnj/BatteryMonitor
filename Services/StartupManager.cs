@@ -38,7 +38,7 @@ namespace BatteryMonitor3.Services
             var exePath = Process.GetCurrentProcess().MainModule?.FileName;
             if (string.IsNullOrEmpty(exePath)) return;
 
-            // Ensure .exe extension just in case
+            // 念のため .exe 拡張子を確認
             if (exePath.EndsWith(".dll", StringComparison.OrdinalIgnoreCase))
             {
                 exePath = Path.ChangeExtension(exePath, ".exe");
@@ -48,7 +48,7 @@ namespace BatteryMonitor3.Services
             {
                 try
                 {
-                    // Create XML for task definition to allow running on battery
+                    // バッテリー駆動時でも実行できるようにタスク定義のXMLを作成
                     string xmlContent = $@"<?xml version=""1.0"" encoding=""UTF-16""?>
 <Task version=""1.2"" xmlns=""http://schemas.microsoft.com/windows/2004/02/mit/task"">
   <RegistrationInfo>
@@ -94,8 +94,8 @@ namespace BatteryMonitor3.Services
                     string tempXml = Path.GetTempFileName();
                     File.WriteAllText(tempXml, xmlContent);
 
-                    // Register task using XML
-                    // /f : Force overwrite
+                    // XMLを使用してタスクを登録
+                    // /f : 強制上書き
                     var args = $"/create /tn \"{TaskName}\" /xml \"{tempXml}\" /f";
                     RunSchTasks(args);
                     
@@ -103,12 +103,12 @@ namespace BatteryMonitor3.Services
                 }
                 catch (Exception ex)
                 {
-                     System.Diagnostics.Debug.WriteLine($"Error registering task: {ex.Message}");
+                     System.Diagnostics.Debug.WriteLine($"タスク登録エラー: {ex.Message}");
                 }
             }
             else
             {
-                // Remove task
+                // タスクを削除
                 var args = $"/delete /tn \"{TaskName}\" /f";
                 RunSchTasks(args);
             }
@@ -130,7 +130,7 @@ namespace BatteryMonitor3.Services
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"SchTasks Error: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"SchTasks エラー: {ex.Message}");
             }
         }
     }

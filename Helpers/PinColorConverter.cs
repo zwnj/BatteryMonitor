@@ -11,9 +11,9 @@ namespace BatteryMonitor3.Helpers
         {
             if (value is bool isPinned && isPinned)
             {
-                return Brushes.LightGreen; // Pinned color
+                return Brushes.LightGreen; // 固定時の色
             }
-            return Brushes.Gray; // Unpinned color
+            return Brushes.Gray; // 未固定時の色
         }
 
         public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)

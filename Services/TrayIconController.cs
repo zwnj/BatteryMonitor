@@ -75,29 +75,29 @@ namespace BatteryMonitor3.Services
         {
             if (isPinned)
             {
-                // Save current state
+                // 現在の状態を保存
                 _savedStickyMode = _isStickyMode;
                 if (_notifyIcon?.TrayPopupResolved is Popup popup)
                 {
                     _savedStaysOpen = popup.StaysOpen;
                     
-                    // Enter pinned state
+                    // 固定モードへ移行
                     _isStickyMode = true;
                     popup.StaysOpen = true;
                 }
             }
             else
             {
-                // Restore previous state
+                // 前の状態を復元
                 _isStickyMode = _savedStickyMode;
                 if (_notifyIcon?.TrayPopupResolved is Popup popup)
                 {
                     if (_isStickyMode)
                     {
-                        // Returning to Sticky Mode
+                        // Stickyモード（クリック表示状態）へ戻る
                         
-                        // To ensure it doesn't close immediately (since we are setting StaysOpen=false),
-                        // we must ensure it has focus/activation FIRST.
+                        // StaysOpen=false に切り替える際、即座に閉じないようにするため、
+                        // まずフォーカス/アクティブ化を確実に行う
                         if (popup.Child is UIElement child)
                         {
                             if (PresentationSource.FromVisual(child) is System.Windows.Interop.HwndSource source)
@@ -111,8 +111,8 @@ namespace BatteryMonitor3.Services
                     }
                     else
                     {
-                        // Returning to Hover Mode
-                        popup.StaysOpen = true; // Controlled by Watchdog
+                        // ホバーモード（マウス移動で表示状態）へ戻る
+                        popup.StaysOpen = true; // Watchdogによって制御される
                     }
                 }
             }
@@ -150,15 +150,15 @@ namespace BatteryMonitor3.Services
                     threadsAttached = AttachThreadInput(foreThread, appThread, true);
                     if (threadsAttached)
                     {
-                        // Bring to foreground
+                        // 最前面へ持ってくる
                         success = SetForegroundWindow(hWnd);
-                        // Also try SetActiveWindow and SetFocus to be sure
+                        // 念のため SetActiveWindow と SetFocus も試行
                         SetActiveWindow(hWnd);
                         SetFocus(hWnd);
                     }
                     else
                     {
-                        Logger.Info($"AttachThreadInput failed. ForeThread={foreThread}, AppThread={appThread}");
+                        Logger.Info($"AttachThreadInput 失敗。ForeThread={foreThread}, AppThread={appThread}");
                     }
                 }
                 else
@@ -170,7 +170,7 @@ namespace BatteryMonitor3.Services
             }
             catch (Exception ex)
             {
-                Logger.Error("ForceForegroundWindow failed", ex);
+                Logger.Error("ForceForegroundWindow 失敗", ex);
             }
             finally
             {
@@ -207,9 +207,9 @@ namespace BatteryMonitor3.Services
                     // AttachThreadInputを使って無理やり最前面化する
                     if (popup.Child is UIElement child)
                     {
-                        // Use a slightly lower priority than Loaded to ensure visual tree is ready? 
-                        // Actually Loaded is good.
-                        child.Dispatcher.BeginInvoke(DispatcherPriority.Loaded, new Action(() => 
+                        // Loadedより少し低い優先度で実行する必要があるか？
+                        // 実際にはLoadedで問題ない
+                        child.Dispatcher.BeginInvoke(DispatcherPriority.Loaded, new Action(() =>  
                         {
                             bool foreResult = false;
                             if (PresentationSource.FromVisual(child) is System.Windows.Interop.HwndSource source)
@@ -218,11 +218,11 @@ namespace BatteryMonitor3.Services
                             }
                             
                             bool focusResult = child.Focus();
-                            // Do NOT capture mouse manually; it prevents external clicks from activating other windows,
-                            // which breaks StaysOpen=false logic.
+                            // 手動でマウスキャプチャはしない。外部クリックによる他のウィンドウのアクティブ化を妨げ、
+                            // StaysOpen=false のロジックを壊してしまうため。
                             // bool captureResult = Mouse.Capture(child);
 
-                            Logger.Info($"Shortcut Activation: Foreground={foreResult}, Focus={focusResult}");
+                            Logger.Info($"ショートカット起動: Foreground={foreResult}, Focus={focusResult}");
                         }));
                     }
                 }
@@ -231,7 +231,7 @@ namespace BatteryMonitor3.Services
 
         private void MyNotifyIcon_TrayMouseMove(object? sender, RoutedEventArgs e)
         {
-            // If ContextMenu is open, do not start hover logic
+            // コンテキストメニューが開いている場合はホバー処理を開始しない
             if (_notifyIcon?.ContextMenu?.IsOpen == true) return;
 
             _lastMoveTime = DateTime.Now;
@@ -259,7 +259,7 @@ namespace BatteryMonitor3.Services
                 }
                 else if (_notifyIcon?.TrayPopupResolved is Popup existingPopup)
                 {
-                     // If already open, just focus
+                     // 既に開いている場合はフォーカスのみ行う
                      if (existingPopup.Child is UIElement child)
                      {
                          if (PresentationSource.FromVisual(child) is System.Windows.Interop.HwndSource source)
@@ -278,10 +278,9 @@ namespace BatteryMonitor3.Services
             {
                 if (popup.IsOpen)
                 {
-                    // Already open (e.g. from hover). 
-                    // CRITICAL: Ensure focus FIRST before setting StaysOpen=false.
-                    // If we set StaysOpen=false while focus is still on the Tray Icon (Taskbar), 
-                    // the popup will close immediately.
+                    // 既に開いている（ホバー等）。
+                    // 重要: StaysOpen=false にする前に必ずフォーカスをあてる。
+                    // フォーカスがタスクトレイアイコンに残ったまま StaysOpen=false にすると即座に閉じてしまう。
                     if (popup.Child is UIElement child)
                     {
                         if (PresentationSource.FromVisual(child) is System.Windows.Interop.HwndSource source)
@@ -291,11 +290,11 @@ namespace BatteryMonitor3.Services
                         child.Focus();
                     }
                     
-                    popup.StaysOpen = false; // Now let WPF handle auto-close on focus loss
+                    popup.StaysOpen = false; // フォーカス喪失で自動で閉じるようにWPFに任せる
                 }
                 else
                 {
-                    // Not open, show it normally
+                    // 開いていないので通常通り表示
                     popup.StaysOpen = false;
                     _notifyIcon.ShowTrayPopup();
                 }
@@ -306,10 +305,10 @@ namespace BatteryMonitor3.Services
         {
             _showDelayTimer?.Stop();
             
-            // If ContextMenu opened while waiting, abort
+            // 待機中にコンテキストメニューが開かれたら中断
             if (_notifyIcon?.ContextMenu?.IsOpen == true) return;
 
-            // Grace period: If right click happened recently (e.g. < 1.0s), suppress hover
+            // 猶予期間: 右クリック直後（例: 1.0秒以内）はホバー表示を抑制
             if ((DateTime.Now - _lastRightClickTime).TotalSeconds < 1.0) return;
             
             if (GetCursorPos(out Win32Point currentPt))
@@ -318,12 +317,12 @@ namespace BatteryMonitor3.Services
                  double dy = currentPt.Y - _lastHoverPos.Y;
                  double dist = Math.Sqrt(dx*dx + dy*dy);
 
-                 if (dist < 40.0) // 40 pixels threshold
+                 if (dist < 40.0) // 40ピクセルの閾値
                  {
-                     _isStickyMode = false; // This is a hover-show
+                     _isStickyMode = false; // ホバー表示モード
                      if (_notifyIcon?.TrayPopupResolved is Popup popup)
                      {
-                         popup.StaysOpen = true; // We will control closing with the watchdog
+                         popup.StaysOpen = true; // Watchdogで閉じる制御を行う
                          _notifyIcon.ShowTrayPopup();
                      }
                  }
@@ -332,12 +331,12 @@ namespace BatteryMonitor3.Services
 
         private void OnPopupClosed(object? sender, EventArgs e)
         {
-            _isStickyMode = false; // Reset mode when popup closes for any reason
+            _isStickyMode = false; // いかなる理由でもポップアップが閉じたらモードをリセット
         }
 
         private void WatchdogTimer_Tick(object? sender, EventArgs e)
         {
-            if (_isStickyMode) return; // Don't run watchdog in sticky mode
+            if (_isStickyMode) return; // Stickyモード中はWatchdogを実行しない
             if (_notifyIcon?.TrayPopupResolved is not Popup popup || !popup.IsOpen) return;
 
             bool isMouseOverPopup = popup.IsMouseOver;
@@ -354,11 +353,11 @@ namespace BatteryMonitor3.Services
 
             if (!isMouseOverIcon)
             {
-                 // Give a small grace period of 0.5s from last actual move event?
+                 // Give a small grace period (0.5s) from the last move event?
                  if ((DateTime.Now - _lastMoveTime).TotalSeconds < 0.5) isMouseOverIcon = true;
             }
 
-            if (_isPinnedDelegate()) return; // Never close if pinned
+            if (_isPinnedDelegate()) return; // Do not close when pinned
 
             if (!isMouseOverPopup && !isMouseOverIcon)
             {
@@ -367,7 +366,7 @@ namespace BatteryMonitor3.Services
                     Mouse.Capture(null);
                 }
                 
-                // Animate Close
+                // アニメーションして閉じる
                 if (popup.Child is PopupView view)
                 {
                     view.AnimateClose(() => _notifyIcon.CloseTrayPopup());

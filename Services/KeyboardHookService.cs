@@ -101,7 +101,7 @@ namespace BatteryMonitor3.Services.Keyboard
             UnhookWindowsHookEx(_hookID);
         }
 
-        // --- P/Invoke Definitions ---
+        // --- P/Invoke 定義 ---
         [DllImport("user32.dll", CharSet = CharSet.Auto, SetLastError = true)]
         private static extern IntPtr SetWindowsHookEx(int idHook,
             LowLevelKeyboardProc lpfn, IntPtr hMod, uint dwThreadId);

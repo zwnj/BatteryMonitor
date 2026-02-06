@@ -104,7 +104,7 @@
                                 <ToggleButton.Template>
                                     <ControlTemplate TargetType="ToggleButton">
                                         <Grid Background="Transparent">
-                                            <TextBlock x:Name="PinIcon" Text="📌" FontSize="16" Foreground="{DynamicResource IconDefaultBrush}">
+                                            <TextBlock x:Name="PinIcon" Text="📌" FontSize="18" Foreground="{DynamicResource IconDefaultBrush}" VerticalAlignment="Center" HorizontalAlignment="Center">
                                                 <TextBlock.Effect>
                                                     <DropShadowEffect x:Name="GlowEffect" Color="Transparent" BlurRadius="0" ShadowDepth="0" Opacity="0"/>
                                                 </TextBlock.Effect>
@@ -198,8 +198,8 @@
                     <!-- Main Stats -->
                     <StackPanel Grid.Row="1" Margin="0,0,0,30">
                         <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
-                            <TextBlock Text="⚡" Style="{StaticResource StatusTextStyle}" FontSize="32" Margin="0,0,10,0"/>
-                            <TextBlock Text="{Binding BatteryLevel}" Foreground="{DynamicResource PrimaryTextBrush}" FontSize="48" FontWeight="Bold"/>
+                            <TextBlock Text="⚡" Style="{StaticResource StatusTextStyle}" FontSize="32" VerticalAlignment="Center" Margin="0,0,10,0"/>
+                            <TextBlock Text="{Binding BatteryLevel}" Foreground="{DynamicResource PrimaryTextBrush}" FontSize="48" FontWeight="Bold" VerticalAlignment="Center"/>
                             <TextBlock Text="%" Foreground="{DynamicResource SecondaryTextBrush}" FontSize="24" VerticalAlignment="Bottom" Margin="5,0,0,8"/>
                         </StackPanel>
                         <TextBlock Text="{Binding MainStatusText}" 

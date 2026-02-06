@@ -36,14 +36,14 @@ namespace BatteryMonitor3.Helpers
                     var timestamp = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss.fff");
                     var logLine = $"[{timestamp}] [{level}] {message}";
                     
-                    // Append to file
+                    // ファイルに追記
                     File.AppendAllText(LogFilePath, logLine + Environment.NewLine);
                 }
             }
             catch (Exception)
             {
-                // Failed to log - possibly disk full or permissions.
-                // Avoid crashing the app just because logging failed.
+                // ログ出力失敗 - おそらくディスク容量不足や権限エラー
+                // ログ失敗だけでアプリをクラッシュさせない
             }
         }
     }

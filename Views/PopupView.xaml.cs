@@ -14,12 +14,12 @@ using BatteryMonitor3.Models;
 namespace BatteryMonitor3.Views
 {
     /// <summary>
-    /// Interaction logic for PopupView.xaml
+    /// PopupView.xaml の相互作用ロジック
     /// </summary>
     public partial class PopupView : UserControl
     {
         private bool _isDragging;
-        private Point _startPoint;
+        private Point _lastScreenPoint;
         private Popup? _parentPopup;
 
         public PopupView()
@@ -32,7 +32,7 @@ namespace BatteryMonitor3.Views
             
             ThemeManager.ThemeChanged += (s, args) => UpdateTheme();
             
-            // Subscribe to System Events for Transparency/Power changes
+            // 透明効果や電源設定の変更イベントを購読
             Microsoft.Win32.SystemEvents.UserPreferenceChanged += (s, e) => 
             {
                 if (e.Category == Microsoft.Win32.UserPreferenceCategory.General)
@@ -45,7 +45,7 @@ namespace BatteryMonitor3.Views
                 Dispatcher.Invoke(() => CheckTransparencyStatus());
             };
 
-            // Initial theme apply
+            // 初回のテーマ適用
             UpdateTheme();
         }
 
@@ -54,7 +54,7 @@ namespace BatteryMonitor3.Views
             var uri = ThemeManager.GetThemeUri(ThemeManager.CurrentTheme);
             var newDict = new ResourceDictionary { Source = uri };
 
-            // Clear old theme dictionaries from local resources
+            // リソースから古いテーマ辞書を削除
             var oldDicts = this.Resources.MergedDictionaries
                 .Where(d => d.Source != null &&
                             (d.Source.OriginalString.EndsWith("DarkTheme.xaml") ||
@@ -68,18 +68,18 @@ namespace BatteryMonitor3.Views
 
             this.Resources.MergedDictionaries.Add(newDict);
             
-            // Sync ToggleButton state
-            // IsChecked = True -> Dark Mode
-            // IsChecked = False -> Light Mode
+            // トグルボタンの状態を同期
+            // IsChecked = True -> ダークモード
+            // IsChecked = False -> ライトモード
             if (ThemeToggle != null)
             {
                 ThemeToggle.IsChecked = ThemeManager.CurrentTheme == ThemeType.Dark;
             }
 
-            // Apply Transparency Logic
+            // 透明度ロジックを適用
             CheckTransparencyStatus();
 
-            // Apply Acrylic Effect with correct tint
+            // 適切な色合いでアクリル効果を適用
             if (PresentationSource.FromVisual(this) is HwndSource source)
             {
                 bool isDark = ThemeManager.CurrentTheme == ThemeType.Dark;
@@ -93,7 +93,7 @@ namespace BatteryMonitor3.Views
 
             bool isTransparencyEnabled = true;
 
-            // 1. Check Registry (Personalization > Transparency)
+            // 1. レジストリを確認 (個人用設定 > 色 > 透明効果)
             try
             {
                 using var key = Microsoft.Win32.Registry.CurrentUser.OpenSubKey(@"Software\Microsoft\Windows\CurrentVersion\Themes\Personalize");
@@ -106,26 +106,16 @@ namespace BatteryMonitor3.Views
                     }
                 }
             }
-            catch { /* Ignore access errors */ }
+            catch { /* アクセスエラーは無視 */ }
 
-            // 2. Check Power Status (Simplified check for Power Saver / Battery Saver)
-            // Note: SystemParameters.PowerLineStatus is not always real-time for Energy Saver mode specifically,
-            // but is a good proxy.
+            // 2. 電源状態を確認 (省電力モード / バッテリー節約機能の簡易チェック)
+            // 注: SystemParameters.PowerLineStatus はバッテリー節約機能そのものではないが、目安として使用。
             if (SystemParameters.PowerLineStatus == PowerLineStatus.Offline)
             {
-                // On Battery, we might want to be conservative.
-                // However, user specifically mentioned "Energy Saver Mode".
-                // We'll assume if Transparency is disabled in Registry OR we are on Battery?
-                // Actually, Windows 10/11 updates the Registry "EnableTransparency" dynamically? 
-                // No, it usually doesn't.
+                // バッテリー駆動時は、透明効果が無効化されている可能性があるため安全策をとる
+                // ユーザー設定で「バッテリー節約機能」がオンの場合などはOS側で透明効果が切れる
                 
-                // If we want to target "Energy Saver", we should check if transparency *looks* broken?
-                // No reliable way without UWP.
-                // Let's rely on User Preference first.
-                // If the user SAYS "Energy Saver turns off transparency", 
-                // it implies the OS is disabling the effect visually.
-                
-                // Let's check SystemParameters.HighContrast just in case.
+                // ハイコントラストモードの場合は無効
                 if (SystemParameters.HighContrast) isTransparencyEnabled = false;
             }
 
@@ -141,7 +131,7 @@ namespace BatteryMonitor3.Views
 
         private void OnThemeToggleClick(object sender, RoutedEventArgs e)
         {
-            // 1. Capture current visual as bitmap
+            // 1. 現在の表示内容をビットマップとしてキャプチャ
             if (MainBorder != null)
             {
                 int w = (int)MainBorder.ActualWidth;
@@ -157,16 +147,16 @@ namespace BatteryMonitor3.Views
                 }
             }
 
-            // 2. Switch Theme (instant update of underlying UI controls)
+            // 2. テーマを切り替え (UIコントロールのスタイルが即座に変更される)
             ThemeManager.ToggleTheme();
 
-            // 3. Animate Overlay opacity 1 -> 0
+            // 3. オーバーレイの不透明度を 1 -> 0 にアニメーション
             var fadeOut = new DoubleAnimation(1, 0, TimeSpan.FromSeconds(0.4));
             fadeOut.EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut };
             fadeOut.Completed += (s, _) => 
             {
                 TransitionOverlay.Visibility = Visibility.Collapsed;
-                TransitionOverlay.Source = null; // release memory
+                TransitionOverlay.Source = null; // メモリ解放
             };
             
             TransitionOverlay.BeginAnimation(Image.OpacityProperty, fadeOut);
@@ -174,23 +164,42 @@ namespace BatteryMonitor3.Views
 
         private void PopupView_Loaded(object sender, RoutedEventArgs e)
         {
-            // TaskbarIcon hosts the UserControl inside a Popup
+            // TaskbarIcon は UserControl を Popup 内に配置している
             _parentPopup = this.Parent as Popup;
 
             if (_parentPopup != null)
             {
+                // Screen Edgeでのワープ（自動位置補正）を防ぐために Absolute に設定
+                _parentPopup.Placement = PlacementMode.Absolute;
+
                 // 保存された位置を読み込んで適用
                 var settings = AppSettings.Load();
-                if (!double.IsNaN(settings.WindowLeft))
+                if (!double.IsNaN(settings.WindowLeft) && !double.IsNaN(settings.WindowTop))
                 {
                     _parentPopup.HorizontalOffset = settings.WindowLeft;
-                }
-                if (!double.IsNaN(settings.WindowTop))
-                {
                     _parentPopup.VerticalOffset = settings.WindowTop;
                 }
+                else
+                {
+                    // 初回表示時（保存値がない場合）はマウス位置に表示
+                    // Placement=Absoluteにしたため、手動で座標を設定する必要がある
+                    if (NativeMethods.GetCursorPos(out var p))
+                    {
+                                var initialSource = PresentationSource.FromVisual(this);
+                        if (initialSource?.CompositionTarget != null)
+                        {
+                            var matrix = initialSource.CompositionTarget.TransformFromDevice;
+                            var logicalPos = matrix.Transform(new Point(p.X, p.Y));
+                            
+                            // カーソルの少し右下に表示、あるいは中央揃え
+                            // ここではカーソル位置を左上とする（必要に応じて調整）
+                            _parentPopup.HorizontalOffset = logicalPos.X;
+                            _parentPopup.VerticalOffset = logicalPos.Y;
+                        }
+                    }
+                }
 
-                // Apply Acrylic Effect
+                // アクリル効果を適用
                 if (PresentationSource.FromVisual(this) is HwndSource source)
                 {
                     bool isDark = ThemeManager.CurrentTheme == ThemeType.Dark;
@@ -212,8 +221,19 @@ namespace BatteryMonitor3.Views
             if (_parentPopup == null) return;
 
             _isDragging = true;
-            _startPoint = e.GetPosition(null);
-            this.CaptureMouse();
+            try
+            {
+                // Win32 APIを使用して生のカーソル位置（スクリーン座標）を取得
+                NativeMethods.POINT p;
+                NativeMethods.GetCursorPos(out p);
+                _lastScreenPoint = p;
+                
+                this.CaptureMouse();
+            }
+            catch (InvalidOperationException)
+            {
+                _isDragging = false;
+            }
         }
 
         private bool IsInputEelement(DependencyObject? obj)
@@ -233,13 +253,76 @@ namespace BatteryMonitor3.Views
         {
             if (_isDragging && _parentPopup != null)
             {
-                var currentPoint = e.GetPosition(null);
-                var offsetX = currentPoint.X - _startPoint.X;
-                var offsetY = currentPoint.Y - _startPoint.Y;
+                try
+                {
+                    // 1. レスポンス向上のため、前回からの差分（Delta）方式に変更
+                    NativeMethods.POINT p;
+                    NativeMethods.GetCursorPos(out p);
+                    var currentScreenPoint = (Point)p;
+                    
+                    var screenDelta = currentScreenPoint - _lastScreenPoint;
 
-                // Update the popup's offset
-                _parentPopup.HorizontalOffset += offsetX;
-                _parentPopup.VerticalOffset += offsetY;
+                    // 差異がない場合は処理スキップ
+                    if (screenDelta.X == 0 && screenDelta.Y == 0) return;
+
+                    // 3. DPIスケーリングを考慮して論理ピクセルに変換
+                    var source = PresentationSource.FromVisual(this);
+                    if (source?.CompositionTarget != null)
+                    {
+                        var matrix = source.CompositionTarget.TransformFromDevice;
+                        var logicalDelta = matrix.Transform(screenDelta);
+
+                        // 4. 現在の位置（固定されているかもしれない）に対して、今回の移動分だけを加算
+                        var newH = _parentPopup.HorizontalOffset + logicalDelta.X;
+                        var newV = _parentPopup.VerticalOffset + logicalDelta.Y;
+
+                    // 5. スマートクランプ (Monitor-aware)
+                        // マウス位置にあるモニターの作業領域を取得してクランプする
+                        // これにより、オフセットの過剰な蓄積（デッドゾーンの原因）を防ぎつつ、マルチモニター間の移動も阻害しない
+                        var monitorHandle = NativeMethods.MonitorFromPoint(new NativeMethods.POINT { X = (int)currentScreenPoint.X, Y = (int)currentScreenPoint.Y }, NativeMethods.MONITOR_DEFAULTTONEAREST);
+                        var monitorInfo = new NativeMethods.MONITORINFO();
+                        monitorInfo.cbSize = (uint)System.Runtime.InteropServices.Marshal.SizeOf(monitorInfo);
+
+                        if (NativeMethods.GetMonitorInfo(monitorHandle, ref monitorInfo))
+                        {
+                            // 論理ピクセルへの変換が必要
+                            // モニター座標(物理) -> 論理
+                            // NOTE: 簡易的に現在のTransformを使用するが、モニターごとのDPI違いはWPFのPopupがある程度吸収することを期待
+                            // 厳密にはMonitor DPIを取得すべきだが、ここでは「行き過ぎ防止」が主目的なので、
+                            // 現在のDPI倍率で物理RECTを割ることで論理RECTを推定する
+
+                            // TransformFromDeviceは 「物理 -> 論理」
+                            var p1 = matrix.Transform(new Point(monitorInfo.rcWork.Left, monitorInfo.rcWork.Top));
+                            var p2 = matrix.Transform(new Point(monitorInfo.rcWork.Right, monitorInfo.rcWork.Bottom));
+                            
+                            var minX = Math.Min(p1.X, p2.X);
+                            var maxX = Math.Max(p1.X, p2.X);
+                            var minY = Math.Min(p1.Y, p2.Y);
+                            var maxY = Math.Max(p1.Y, p2.Y);
+
+                            var w = MainBorder?.ActualWidth ?? 0;
+                            var h = MainBorder?.ActualHeight ?? 0;
+
+                            if (w > 0 && h > 0)
+                            {
+                                newH = Math.Max(minX, Math.Min(maxX - w, newH));
+                                newV = Math.Max(minY, Math.Min(maxY - h, newV));
+                            }
+                        }
+
+                        _parentPopup.HorizontalOffset = newH;
+                        _parentPopup.VerticalOffset = newV;
+
+                        // 計算および更新が完了した後に、今回の座標を「前回」として保存
+                        _lastScreenPoint = currentScreenPoint;
+                    }
+                }
+                catch (InvalidOperationException)
+                {
+                    // ウィンドウが閉じられたりした場合の安全策
+                    _isDragging = false;
+                    this.ReleaseMouseCapture();
+                }
             }
         }
 
@@ -273,6 +356,52 @@ namespace BatteryMonitor3.Views
             {
                 onCompleted();
             }
+        }
+    }
+
+    internal static class NativeMethods
+    {
+        [System.Runtime.InteropServices.DllImport("user32.dll")]
+        [return: System.Runtime.InteropServices.MarshalAs(System.Runtime.InteropServices.UnmanagedType.Bool)]
+        internal static extern bool GetCursorPos(out POINT lpPoint);
+
+        [System.Runtime.InteropServices.DllImport("user32.dll")]
+        internal static extern IntPtr MonitorFromPoint(POINT pt, uint dwFlags);
+
+        [System.Runtime.InteropServices.DllImport("user32.dll", CharSet = System.Runtime.InteropServices.CharSet.Auto)]
+        [return: System.Runtime.InteropServices.MarshalAs(System.Runtime.InteropServices.UnmanagedType.Bool)]
+        internal static extern bool GetMonitorInfo(IntPtr hMonitor, ref MONITORINFO lpmi);
+
+        internal const uint MONITOR_DEFAULTTONEAREST = 0x00000002;
+
+        [System.Runtime.InteropServices.StructLayout(System.Runtime.InteropServices.LayoutKind.Sequential)]
+        internal struct POINT
+        {
+            public int X;
+            public int Y;
+
+            public static implicit operator Point(POINT p)
+            {
+                return new Point(p.X, p.Y);
+            }
+        }
+
+        [System.Runtime.InteropServices.StructLayout(System.Runtime.InteropServices.LayoutKind.Sequential, CharSet = System.Runtime.InteropServices.CharSet.Auto)]
+        internal struct MONITORINFO
+        {
+            public uint cbSize;
+            public RECT rcMonitor;
+            public RECT rcWork;
+            public uint dwFlags;
+        }
+
+        [System.Runtime.InteropServices.StructLayout(System.Runtime.InteropServices.LayoutKind.Sequential)]
+        internal struct RECT
+        {
+            public int Left;
+            public int Top;
+            public int Right;
+            public int Bottom;
         }
     }
 }
