@@ -8,10 +8,12 @@ namespace BatteryMonitor3.Services
 {
     public class BatteryService
     {
-
         private bool _supportsTemperature = true;
+        private uint? _cachedDesignCapacity;
+        private uint _cachedCycleCount;
+        private double _cachedTemperature = 0;
 
-        public BatteryInfo GetBatteryStatus()
+        public BatteryInfo GetBatteryStatus(bool refreshCycleCount = false, bool refreshTemperature = false)
         {
             var info = new BatteryInfo();
 
@@ -30,12 +32,16 @@ namespace BatteryMonitor3.Services
                     info.DischargeRate = Convert.ToUInt32(status["DischargeRate"]);
                 }
 
-                var staticData = new ManagementObjectSearcher(@"root\WMI", "SELECT * FROM BatteryStaticData")
-                    .Get().Cast<ManagementObject>().FirstOrDefault();
-                if (staticData != null)
+                if (!_cachedDesignCapacity.HasValue)
                 {
-                    info.DesignCapacity = Convert.ToUInt32(staticData["DesignedCapacity"]);
+                    var staticData = new ManagementObjectSearcher(@"root\WMI", "SELECT * FROM BatteryStaticData")
+                        .Get().Cast<ManagementObject>().FirstOrDefault();
+                    if (staticData != null)
+                    {
+                        _cachedDesignCapacity = Convert.ToUInt32(staticData["DesignedCapacity"]);
+                    }
                 }
+                info.DesignCapacity = _cachedDesignCapacity ?? 0;
 
                 var fullCharge = new ManagementObjectSearcher(@"root\WMI", "SELECT * FROM BatteryFullChargedCapacity")
                     .Get().Cast<ManagementObject>().FirstOrDefault();
@@ -57,23 +63,26 @@ namespace BatteryMonitor3.Services
             }
 
             // --- 補助情報: サイクルカウント ---
-            try
+            if (refreshCycleCount)
             {
-                var cycleCountData = new ManagementObjectSearcher(@"root\WMI", "SELECT * FROM BatteryCycleCount")
-                    .Get().Cast<ManagementObject>().FirstOrDefault();
-                if (cycleCountData != null)
+                try
                 {
-                    info.CycleCount = Convert.ToUInt32(cycleCountData["CycleCount"]);
+                    var cycleCountData = new ManagementObjectSearcher(@"root\WMI", "SELECT * FROM BatteryCycleCount")
+                        .Get().Cast<ManagementObject>().FirstOrDefault();
+                    if (cycleCountData != null)
+                    {
+                        _cachedCycleCount = Convert.ToUInt32(cycleCountData["CycleCount"]);
+                    }
+                }
+                catch (ManagementException ex)
+                {
+                    Logger.Error("Failed to get cycle count", ex);
                 }
             }
-            catch (ManagementException ex)
-            {
-                Logger.Error("Failed to get cycle count", ex);
-                info.CycleCount = 0;
-            }
+            info.CycleCount = _cachedCycleCount;
 
             // --- 補助情報: 温度 (管理者権限が必要) ---
-            if (_supportsTemperature)
+            if (_supportsTemperature && refreshTemperature)
             {
                 try
                 {
@@ -84,20 +93,17 @@ namespace BatteryMonitor3.Services
                         // 単位: 1/10 Kelvin
                         // Celsius = (K - 273.15)
                         uint rawTemp = Convert.ToUInt32(thermalData["CurrentTemperature"]);
-                        info.Temperature = (rawTemp / 10.0) - 273.15;
+                        _cachedTemperature = (rawTemp / 10.0) - 273.15;
                     }
                 }
                 catch (ManagementException ex)
                 {
                     Logger.Error("Failed to get temperature (Disabling temperature check)", ex);
                     _supportsTemperature = false;
-                    info.Temperature = 0;
+                    _cachedTemperature = 0;
                 }
             }
-            else
-            {
-                info.Temperature = 0;
-            }
+            info.Temperature = _cachedTemperature;
 
             return info;
         }

@@ -12,8 +12,16 @@ namespace BatteryMonitor3.ViewModels
 {
     public class BatteryViewModel : INotifyPropertyChanged
     {
+        private static readonly TimeSpan VisibleTemperatureRefreshInterval = TimeSpan.FromSeconds(30);
+        private static readonly TimeSpan HiddenTemperatureRefreshInterval = TimeSpan.FromMinutes(5);
+        private static readonly TimeSpan CycleCountRefreshInterval = TimeSpan.FromMinutes(30);
+
         private readonly BatteryService _service;
         private bool _isUpdating = false;
+        private DateTime _lastTemperatureRefresh = DateTime.MinValue;
+        private DateTime _lastCycleCountRefresh = DateTime.MinValue;
+        private int _lastIconBucket = -1;
+        private bool? _lastIconChargingState;
 
         public event PropertyChangedEventHandler? PropertyChanged;
 
@@ -41,23 +49,33 @@ namespace BatteryMonitor3.ViewModels
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
         }
 
-        public async void UpdateData()
+        public async void UpdateData(bool isPopupVisible = false)
         {
             if (_isUpdating) return;
             _isUpdating = true;
 
             try
             {
-                // バックグラウンドスレッドでデータを取得・生成
-                var result = await System.Threading.Tasks.Task.Run(() => 
-                {
-                    var data = _service.GetBatteryStatus();
-                    var icon = _iconGenerator.GenerateIcon((int)data.Percent, data.IsCharging);
-                    return new { Data = data, Icon = icon };
-                });
+                var now = DateTime.Now;
+                var temperatureInterval = isPopupVisible ? VisibleTemperatureRefreshInterval : HiddenTemperatureRefreshInterval;
+                bool refreshTemperature = now - _lastTemperatureRefresh >= temperatureInterval;
+                bool refreshCycleCount = now - _lastCycleCountRefresh >= CycleCountRefreshInterval;
 
-                var data = result.Data;
-                var icon = result.Icon;
+                if (refreshTemperature)
+                {
+                    _lastTemperatureRefresh = now;
+                }
+
+                if (refreshCycleCount)
+                {
+                    _lastCycleCountRefresh = now;
+                }
+
+                // バックグラウンドスレッドでデータを取得・生成
+                var data = await System.Threading.Tasks.Task.Run(() => 
+                {
+                    return _service.GetBatteryStatus(refreshCycleCount, refreshTemperature);
+                });
 
                 // --- UIスレッドでの更新処理 ---
 
@@ -147,8 +165,7 @@ namespace BatteryMonitor3.ViewModels
                 double fullWh = data.FullChargedCapacity / 1000.0;
                 CapacityDetail = $"{remWh:F1} / {fullWh:F1} Wh";
 
-                // Update Icon
-                TrayIconSource = icon;
+                UpdateTrayIconIfNeeded(data);
             }
             catch (Exception ex)
             {
@@ -299,6 +316,29 @@ namespace BatteryMonitor3.ViewModels
         {
             get => _trayIconSource;
             set { _trayIconSource = value; OnPropertyChanged(); }
+        }
+
+        private void UpdateTrayIconIfNeeded(BatteryInfo data)
+        {
+            int iconBucket = GetIconBucket((int)data.Percent);
+            bool chargingState = data.IsCharging;
+
+            if (TrayIconSource != null && iconBucket == _lastIconBucket && chargingState == _lastIconChargingState)
+            {
+                return;
+            }
+
+            TrayIconSource = _iconGenerator.GenerateIcon(iconBucket, chargingState);
+            _lastIconBucket = iconBucket;
+            _lastIconChargingState = chargingState;
+        }
+
+        private static int GetIconBucket(int percent)
+        {
+            if (percent >= 100) return 100;
+            if (percent <= 0) return 0;
+
+            return (percent / 10) * 10;
         }
     }
 }
