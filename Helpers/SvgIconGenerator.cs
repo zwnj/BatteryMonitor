@@ -1,102 +1,50 @@
 using System;
-using System.Drawing;
-using System.Drawing.Imaging;
-using System.IO;
 using System.Collections.Generic;
+using System.IO;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
-using Svg;
 
 namespace BatteryMonitor3.Helpers
 {
     public class SvgIconGenerator
     {
-        private readonly string _svgPath;
-        private readonly Dictionary<(int BatteryPercentage, bool IsCharging), ImageSource> _iconCache = new();
+        private readonly string _iconDirectory;
+        private readonly Dictionary<(int BucketPercentage, int ColorBand, bool IsCharging), ImageSource> _iconCacheByBand = new();
 
-        public SvgIconGenerator(string svgPath)
+        public SvgIconGenerator(string iconDirectory)
         {
-            _svgPath = svgPath;
-            if (!File.Exists(_svgPath))
+            _iconDirectory = iconDirectory;
+            if (!Directory.Exists(_iconDirectory))
             {
-                Logger.Error($"SVGファイルが見つかりません: {_svgPath}");
+                Logger.Error($"トレイアイコンフォルダが見つかりません: {_iconDirectory}");
             }
         }
 
         public ImageSource GenerateIcon(int batteryPercentage, bool? isCharging = null)
         {
-            if (!File.Exists(_svgPath)) return null;
-
             int normalizedPercentage = NormalizePercentage(batteryPercentage);
+            int colorBand = GetColorBand(batteryPercentage);
             bool normalizedCharging = isCharging == true;
-            var cacheKey = (normalizedPercentage, normalizedCharging);
+            var cacheKey = (normalizedPercentage, colorBand, normalizedCharging);
 
-            if (_iconCache.TryGetValue(cacheKey, out var cachedIcon))
+            if (_iconCacheByBand.TryGetValue(cacheKey, out var cachedIcon))
             {
                 return cachedIcon;
             }
 
-            using var svgDoc = SvgDocument.Open(_svgPath);
+            string fileName = normalizedCharging
+                ? $"battery_{normalizedPercentage}_charging.ico"
+                : $"battery_{normalizedPercentage}_{GetColorBandName(colorBand)}.ico";
+            string iconPath = Path.Combine(_iconDirectory, fileName);
 
-            // 1. テキストの更新 - 削除済み
-            // var textElement = _svgDoc.GetElementById<SvgText>("battery-text");
-            // if (textElement != null)
-            // {
-            //     textElement.Text = batteryPercentage.ToString();
-            //     textElement.TextAnchor = SvgTextAnchor.Middle; 
-            // }
-
-            // 2. レベル矩形の更新
-            // SVGの "battery-inner" の幅に基づくと100%の最大幅は99のようだが
-            // 初期矩形の幅は49.5。
-            // 0-100 を 0-99 の幅にマッピングすると仮定。
-            var levelRect = svgDoc.GetElementById<SvgRectangle>("battery-level-rect");
-            if (levelRect != null)
+            if (!File.Exists(iconPath))
             {
-                float maxWidth = 108f; // 4pxストロークSVG用に戻しました (内部幅108)
-                float newWidth = (normalizedPercentage / 100f) * maxWidth;
-                levelRect.Width = new SvgUnit(SvgUnitType.Pixel, newWidth);
-
-                // レベルに基づいて色を更新
-                if (normalizedCharging)
-                {
-                    // 充電中: 緑 + 雷マーク
-                    levelRect.Fill = new SvgColourServer(System.Drawing.Color.LimeGreen); 
-                }
-                else
-                {
-                    // 充電中でない: 残量に基づく色
-                    if (normalizedPercentage <= 20)
-                    {
-                        levelRect.Fill = new SvgColourServer(System.Drawing.Color.Red);
-                    }
-                    else if (normalizedPercentage <= 50)
-                    {
-                        levelRect.Fill = new SvgColourServer(System.Drawing.Color.Orange); 
-                    }
-                    else
-                    {
-                        levelRect.Fill = new SvgColourServer(System.Drawing.ColorTranslator.FromHtml("#4EC9B0")); 
-                    }
-                }
+                Logger.Error($"トレイアイコンファイルが見つかりません: {iconPath}");
+                return null;
             }
 
-            // 3. 充電雷マークの可視性更新
-            var boltPath = svgDoc.GetElementById<SvgPath>("charging-bolt");
-            if (boltPath != null)
-            {
-                boltPath.Visibility = normalizedCharging ? "visible" : "hidden";
-            }
-
-            // 3. ビットマップへのレンダリング
-            // 目標サイズ: 標準的なトレイアイコンサイズは16x16, 32x32など。
-            // しかし、より大きくレンダリングしてWPFに縮小させることも可能。SVGのViewBoxは120x120。
-            // 鮮明さを保つため、あるいはアスペクト比を維持するために128x128でレンダリング。
-            
-            using var bitmap = svgDoc.Draw(); // ViewBoxサイズ (120x120) または定義されたWidth/Heightで描画
-
-            var icon = BitmapToImageSource(bitmap);
-            _iconCache[cacheKey] = icon;
+            var icon = LoadBitmap(iconPath);
+            _iconCacheByBand[cacheKey] = icon;
             return icon;
         }
 
@@ -108,20 +56,33 @@ namespace BatteryMonitor3.Helpers
             return (clamped / 10) * 10;
         }
 
-        private ImageSource BitmapToImageSource(Bitmap bitmap)
+        private static ImageSource LoadBitmap(string iconPath)
         {
-            using (MemoryStream memory = new MemoryStream())
+            var bitmapImage = new BitmapImage();
+            bitmapImage.BeginInit();
+            bitmapImage.UriSource = new Uri(iconPath, UriKind.Absolute);
+            bitmapImage.CacheOption = BitmapCacheOption.OnLoad;
+            bitmapImage.EndInit();
+            bitmapImage.Freeze();
+            return bitmapImage;
+        }
+
+        private static int GetColorBand(int batteryPercentage)
+        {
+            int clamped = Math.Max(0, Math.Min(100, batteryPercentage));
+            if (clamped <= 20) return 0;
+            if (clamped <= 50) return 1;
+            return 2;
+        }
+
+        private static string GetColorBandName(int colorBand)
+        {
+            return colorBand switch
             {
-                bitmap.Save(memory, ImageFormat.Png);
-                memory.Position = 0;
-                BitmapImage bitmapImage = new BitmapImage();
-                bitmapImage.BeginInit();
-                bitmapImage.StreamSource = memory;
-                bitmapImage.CacheOption = BitmapCacheOption.OnLoad;
-                bitmapImage.EndInit();
-                bitmapImage.Freeze(); // Essential for threading
-                return bitmapImage;
-            }
+                0 => "red",
+                1 => "orange",
+                _ => "teal",
+            };
         }
     }
 }

@@ -30,10 +30,8 @@ namespace BatteryMonitor3.ViewModels
         public BatteryViewModel()
         {
             _service = new BatteryService();
-            // SVGジェネレーターを初期化
-            // BaseDirectory に test.svg (または battery_template.svg) があると仮定
-            string svgPath = System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Images", "battery_template.svg");
-            _iconGenerator = new SvgIconGenerator(svgPath);
+            string iconDirectory = System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Images", "TrayIconsIco");
+            _iconGenerator = new SvgIconGenerator(iconDirectory);
 
             var settings = AppSettings.Load();
             _chargeLimit = settings.ChargeLimit;
@@ -91,6 +89,15 @@ namespace BatteryMonitor3.ViewModels
                 // 4. 残量 (%)
                 BatteryLevel = $"{data.Percent}";
 
+                // トレイ維持に必要な最低限だけ先に更新し、非表示中の文字列整形は避ける。
+                IsCharging = data.IsCharging;
+                UpdateTrayIconIfNeeded(data);
+
+                if (!isPopupVisible)
+                {
+                    return;
+                }
+
                 // 5. 健康度 (%) - WMIからの正確な値
                 double health = 0;
                 if (data.DesignCapacity > 0 && data.FullChargedCapacity > 0)
@@ -108,7 +115,6 @@ namespace BatteryMonitor3.ViewModels
 
                 if (data.IsCharging)
                 {
-                    IsCharging = true;
                     MainStatusText = "充電中";
                     
                     // 充電完了までの時間 (設定された上限まで)
@@ -139,7 +145,6 @@ namespace BatteryMonitor3.ViewModels
                 }
                 else
                 {
-                    IsCharging = false;
                     MainStatusText = "バッテリー使用中";
                     
                     // 残り駆動時間
@@ -164,8 +169,6 @@ namespace BatteryMonitor3.ViewModels
                 double remWh = data.RemainingCapacity / 1000.0;
                 double fullWh = data.FullChargedCapacity / 1000.0;
                 CapacityDetail = $"{remWh:F1} / {fullWh:F1} Wh";
-
-                UpdateTrayIconIfNeeded(data);
             }
             catch (Exception ex)
             {
