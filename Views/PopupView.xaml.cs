@@ -52,6 +52,7 @@ namespace BatteryMonitor3.Views
         public void PrepareForOpen()
         {
             ResetVisualState();
+            ApplySavedPosition();
             TransitionOverlay.BeginAnimation(Image.OpacityProperty, null);
             TransitionOverlay.Visibility = Visibility.Collapsed;
             TransitionOverlay.Source = null;
@@ -186,9 +187,21 @@ namespace BatteryMonitor3.Views
         private void PopupView_Loaded(object sender, RoutedEventArgs e)
         {
             ResetVisualState();
+            ApplySavedPosition();
 
+            // アクリル効果を適用
+            if (PresentationSource.FromVisual(this) is HwndSource source)
+            {
+                bool isDark = ThemeManager.CurrentTheme == ThemeType.Dark;
+                WindowBackdrop.ApplyAcrylic(source.Handle, isDark);
+                WindowBackdrop.SetRoundedCorners(source.Handle);
+            }
+        }
+
+        private void ApplySavedPosition()
+        {
             // TaskbarIcon は UserControl を Popup 内に配置している
-            _parentPopup = this.Parent as Popup;
+            _parentPopup ??= this.Parent as Popup;
 
             if (_parentPopup != null)
             {
@@ -220,14 +233,6 @@ namespace BatteryMonitor3.Views
                             _parentPopup.VerticalOffset = logicalPos.Y;
                         }
                     }
-                }
-
-                // アクリル効果を適用
-                if (PresentationSource.FromVisual(this) is HwndSource source)
-                {
-                    bool isDark = ThemeManager.CurrentTheme == ThemeType.Dark;
-                    WindowBackdrop.ApplyAcrylic(source.Handle, isDark);
-                    WindowBackdrop.SetRoundedCorners(source.Handle);
                 }
             }
         }

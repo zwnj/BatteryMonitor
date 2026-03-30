@@ -5,6 +5,7 @@ using System.Windows.Input;
 using System.Windows.Threading;
 using Hardcodet.Wpf.TaskbarNotification;
 using BatteryMonitor3.Helpers;
+using BatteryMonitor3.Models;
 using BatteryMonitor3.Views;
 
 namespace BatteryMonitor3.Services
@@ -281,7 +282,8 @@ namespace BatteryMonitor3.Services
             
             // 待機中にコンテキストメニューが開かれたら中断
             if (_notifyIcon?.ContextMenu?.IsOpen == true) return;
-
+            if (DateTime.Now - _lastExplicitOpenTime < ExplicitOpenGracePeriod) return;
+            
             // 猶予期間: 右クリック直後（例: 1.0秒以内）はホバー表示を抑制
             if ((DateTime.Now - _lastRightClickTime).TotalSeconds < 1.0) return;
             
@@ -296,6 +298,14 @@ namespace BatteryMonitor3.Services
                      _isStickyMode = false; // ホバー表示モード
                      if (_notifyIcon?.TrayPopupResolved is Popup popup)
                      {
+                         if (popup.IsOpen) return;
+
+                         if (popup.Child is PopupView view)
+                         {
+                             view.PrepareForOpen();
+                         }
+
+                         ApplyPopupPosition(popup);
                          popup.StaysOpen = true; // Watchdogで閉じる制御を行う
                          _notifyIcon.ShowTrayPopup();
                      }
@@ -374,6 +384,8 @@ namespace BatteryMonitor3.Services
                 view.PrepareForOpen();
             }
 
+            ApplyPopupPosition(popup);
+
             // まずは安定して表示を成立させ、フォーカス取得後に自動クローズへ戻す。
             popup.StaysOpen = true;
             _notifyIcon.ShowTrayPopup();
@@ -401,6 +413,43 @@ namespace BatteryMonitor3.Services
 
                 Logger.Info($"明示表示: Foreground={foreResult}, Focus={focusResult}");
             }));
+        }
+
+        private void ApplyPopupPosition(Popup popup)
+        {
+            popup.Placement = PlacementMode.Absolute;
+
+            var settings = AppSettings.Load();
+            if (!double.IsNaN(settings.WindowLeft) && !double.IsNaN(settings.WindowTop))
+            {
+                popup.HorizontalOffset = settings.WindowLeft;
+                popup.VerticalOffset = settings.WindowTop;
+                return;
+            }
+
+            if (!GetCursorPos(out Win32Point pt))
+            {
+                return;
+            }
+
+            if (popup.Child is not UIElement child)
+            {
+                popup.HorizontalOffset = pt.X;
+                popup.VerticalOffset = pt.Y;
+                return;
+            }
+
+            var source = PresentationSource.FromVisual(child);
+            if (source?.CompositionTarget == null)
+            {
+                popup.HorizontalOffset = pt.X;
+                popup.VerticalOffset = pt.Y;
+                return;
+            }
+
+            var logicalPos = source.CompositionTarget.TransformFromDevice.Transform(new Point(pt.X, pt.Y));
+            popup.HorizontalOffset = logicalPos.X;
+            popup.VerticalOffset = logicalPos.Y;
         }
     }
 }
