@@ -23,6 +23,7 @@ bld/
 *.csproj.vspscc
 *.vssscc
 *.vspscc
+.codex
 
 # Rider files
 .idea/
@@ -37,10 +38,11 @@ project.assets.json
 *.resharper
 _ReSharper*/
 
-
-
 # Ignore JetBrains Rider files
 *.sln.iml
-NEW_FEATURES.md
-drag_implementation_analysis.md
 
+# Runtime output
+debug.log
+
+# Local generated icon scratch space
+Images/TrayIcons/

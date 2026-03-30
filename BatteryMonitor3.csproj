@@ -16,9 +16,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <None Include="Images\battery_template.svg">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
     <None Include="Images\TrayIconsIco\*.ico">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
