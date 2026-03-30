@@ -26,6 +26,7 @@ namespace BatteryMonitor3.ViewModels
         private DateTime _lastTemperatureRefresh = DateTime.MinValue;
         private DateTime _lastCycleCountRefresh = DateTime.MinValue;
         private DateTime _lastSecondaryRefresh = DateTime.MinValue;
+        private bool _hasLoadedVisibleDetails = false;
         private int _lastIconBucket = -1;
         private bool? _lastIconChargingState;
 
@@ -80,6 +81,11 @@ namespace BatteryMonitor3.ViewModels
                 bool refreshCycleCount = now - _lastCycleCountRefresh >= CycleCountRefreshInterval;
                 bool refreshSecondary = now - _lastSecondaryRefresh >= secondaryInterval;
 
+                if (isPopupVisible && !_hasLoadedVisibleDetails)
+                {
+                    refreshSecondary = true;
+                }
+
                 if (refreshFullChargedCapacity)
                 {
                     _lastFullChargedCapacityRefresh = now;
@@ -95,7 +101,7 @@ namespace BatteryMonitor3.ViewModels
                     _lastCycleCountRefresh = now;
                 }
 
-                if (refreshSecondary)
+                if (refreshSecondary && isPopupVisible)
                 {
                     _lastSecondaryRefresh = now;
                 }
@@ -117,19 +123,35 @@ namespace BatteryMonitor3.ViewModels
                 // 3. 電流 (A)
                 double currentA = (voltageV > 0) ? (powerW / voltageV) : 0;
 
+                string powerRateText = (powerW > 0) ? ((data.IsCharging ? "+" : "-") + $"{powerW:F1} W") : "-- W";
+                string subStatusText;
+                if (data.IsCharging)
+                {
+                    subStatusText = (voltageV > 0 && currentA > 0)
+                        ? $"{powerW:F1}W ({voltageV:F1}V / {currentA:F1}A)"
+                        : $"{powerW:F1}W";
+                }
+                else
+                {
+                    subStatusText = (powerW > 0) ? $"消費: {powerW:F1}W" : "待機中";
+                }
+
                 // 4. 残量 (%)
                 BatteryLevel = $"{data.Percent}";
 
                 // トレイ維持に必要な最低限だけ先に更新し、非表示中の文字列整形は避ける。
                 IsCharging = data.IsCharging;
                 MainStatusText = data.IsCharging ? "充電中" : "バッテリー使用中";
-                PowerRate = (powerW > 0) ? ((data.IsCharging ? "+" : "-") + $"{powerW:F1} W") : "-- W";
+                PowerRate = powerRateText;
+                SubStatusText = subStatusText;
                 UpdateTrayIconIfNeeded(data);
 
                 if (!isPopupVisible || !refreshSecondary)
                 {
                     return;
                 }
+
+                _hasLoadedVisibleDetails = true;
 
                 // 5. 健康度 (%) - WMIからの正確な値
                 double health = 0;
@@ -169,9 +191,6 @@ namespace BatteryMonitor3.ViewModels
                         RemainingTime = "計算中...";
                     }
 
-                    SubStatusText = (voltageV > 0 && currentA > 0)
-                        ? $"{powerW:F1}W ({voltageV:F1}V / {currentA:F1}A)"
-                        : $"{powerW:F1}W";
                 }
                 else
                 {
@@ -186,8 +205,6 @@ namespace BatteryMonitor3.ViewModels
                     {
                         RemainingTime = "-- 時間 -- 分";
                     }
-
-                    SubStatusText = (powerW > 0) ? $"消費: {powerW:F1}W" : "待機中";
                 }
 
                 // 新しいデータ項目の更新
