@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using System.Windows.Media;
@@ -12,14 +13,19 @@ namespace BatteryMonitor3.ViewModels
 {
     public class BatteryViewModel : INotifyPropertyChanged
     {
+        private static readonly TimeSpan FullChargedCapacityRefreshInterval = TimeSpan.FromMinutes(2);
         private static readonly TimeSpan VisibleTemperatureRefreshInterval = TimeSpan.FromSeconds(30);
         private static readonly TimeSpan HiddenTemperatureRefreshInterval = TimeSpan.FromMinutes(5);
         private static readonly TimeSpan CycleCountRefreshInterval = TimeSpan.FromMinutes(30);
+        private static readonly TimeSpan VisibleSecondaryRefreshInterval = TimeSpan.FromSeconds(30);
+        private static readonly TimeSpan HiddenSecondaryRefreshInterval = TimeSpan.FromMinutes(5);
 
         private readonly BatteryService _service;
         private bool _isUpdating = false;
+        private DateTime _lastFullChargedCapacityRefresh = DateTime.MinValue;
         private DateTime _lastTemperatureRefresh = DateTime.MinValue;
         private DateTime _lastCycleCountRefresh = DateTime.MinValue;
+        private DateTime _lastSecondaryRefresh = DateTime.MinValue;
         private int _lastIconBucket = -1;
         private bool? _lastIconChargingState;
 
@@ -47,6 +53,18 @@ namespace BatteryMonitor3.ViewModels
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
         }
 
+        private bool SetProperty<T>(ref T field, T value, [CallerMemberName] string? name = null)
+        {
+            if (EqualityComparer<T>.Default.Equals(field, value))
+            {
+                return false;
+            }
+
+            field = value;
+            OnPropertyChanged(name);
+            return true;
+        }
+
         public async void UpdateData(bool isPopupVisible = false)
         {
             if (_isUpdating) return;
@@ -55,9 +73,17 @@ namespace BatteryMonitor3.ViewModels
             try
             {
                 var now = DateTime.Now;
+                var secondaryInterval = isPopupVisible ? VisibleSecondaryRefreshInterval : HiddenSecondaryRefreshInterval;
+                bool refreshFullChargedCapacity = now - _lastFullChargedCapacityRefresh >= FullChargedCapacityRefreshInterval;
                 var temperatureInterval = isPopupVisible ? VisibleTemperatureRefreshInterval : HiddenTemperatureRefreshInterval;
                 bool refreshTemperature = now - _lastTemperatureRefresh >= temperatureInterval;
                 bool refreshCycleCount = now - _lastCycleCountRefresh >= CycleCountRefreshInterval;
+                bool refreshSecondary = now - _lastSecondaryRefresh >= secondaryInterval;
+
+                if (refreshFullChargedCapacity)
+                {
+                    _lastFullChargedCapacityRefresh = now;
+                }
 
                 if (refreshTemperature)
                 {
@@ -69,10 +95,15 @@ namespace BatteryMonitor3.ViewModels
                     _lastCycleCountRefresh = now;
                 }
 
+                if (refreshSecondary)
+                {
+                    _lastSecondaryRefresh = now;
+                }
+
                 // バックグラウンドスレッドでデータを取得・生成
                 var data = await System.Threading.Tasks.Task.Run(() => 
                 {
-                    return _service.GetBatteryStatus(refreshCycleCount, refreshTemperature);
+                    return _service.GetBatteryStatus(refreshFullChargedCapacity, refreshCycleCount, refreshTemperature);
                 });
 
                 // --- UIスレッドでの更新処理 ---
@@ -91,9 +122,11 @@ namespace BatteryMonitor3.ViewModels
 
                 // トレイ維持に必要な最低限だけ先に更新し、非表示中の文字列整形は避ける。
                 IsCharging = data.IsCharging;
+                MainStatusText = data.IsCharging ? "充電中" : "バッテリー使用中";
+                PowerRate = (powerW > 0) ? ((data.IsCharging ? "+" : "-") + $"{powerW:F1} W") : "-- W";
                 UpdateTrayIconIfNeeded(data);
 
-                if (!isPopupVisible)
+                if (!isPopupVisible || !refreshSecondary)
                 {
                     return;
                 }
@@ -111,12 +144,9 @@ namespace BatteryMonitor3.ViewModels
 
                 // --- UIプロパティの更新 ---
                 Voltage = (voltageV > 0) ? $"{voltageV:F1} V" : "-- V";
-                PowerRate = (powerW > 0) ? ((data.IsCharging ? "+" : "-") + $"{powerW:F1} W") : "-- W";
 
                 if (data.IsCharging)
                 {
-                    MainStatusText = "充電中";
-                    
                     // 充電完了までの時間 (設定された上限まで)
                     if (data.ChargeRate > 0)
                     {
@@ -145,8 +175,6 @@ namespace BatteryMonitor3.ViewModels
                 }
                 else
                 {
-                    MainStatusText = "バッテリー使用中";
-                    
                     // 残り駆動時間
                     if (data.DischargeRate > 0)
                     {
@@ -185,7 +213,7 @@ namespace BatteryMonitor3.ViewModels
         public string BatteryLevel
         {
             get => _batteryLevel;
-            set { _batteryLevel = value; OnPropertyChanged(); }
+            set { SetProperty(ref _batteryLevel, value); }
         }
 
 
@@ -194,42 +222,42 @@ namespace BatteryMonitor3.ViewModels
         public string MainStatusText
         {
             get => _mainStatusText;
-            set { _mainStatusText = value; OnPropertyChanged(); }
+            set { SetProperty(ref _mainStatusText, value); }
         }
 
         private string _subStatusText = "---";
         public string SubStatusText
         {
             get => _subStatusText;
-            set { _subStatusText = value; OnPropertyChanged(); }
+            set { SetProperty(ref _subStatusText, value); }
         }
 
         private string _powerRate = "---";
         public string PowerRate
         {
             get => _powerRate;
-            set { _powerRate = value; OnPropertyChanged(); }
+            set { SetProperty(ref _powerRate, value); }
         }
 
         private string _voltage = "---";
         public string Voltage
         {
             get => _voltage;
-            set { _voltage = value; OnPropertyChanged(); }
+            set { SetProperty(ref _voltage, value); }
         }
 
         private string _cycleCount = "-- 回";
         public string CycleCount
         {
             get => _cycleCount;
-            set { _cycleCount = value; OnPropertyChanged(); }
+            set { SetProperty(ref _cycleCount, value); }
         }
 
         private string _health = "---";
         public string Health
         {
             get => _health;
-            set { _health = value; OnPropertyChanged(); }
+            set { SetProperty(ref _health, value); }
         }
 
         // --- フェーズ2 新規プロパティ ---
@@ -237,21 +265,21 @@ namespace BatteryMonitor3.ViewModels
         public string RemainingTime
         {
             get => _remainingTime;
-            set { _remainingTime = value; OnPropertyChanged(); }
+            set { SetProperty(ref _remainingTime, value); }
         }
 
         private string _capacityDetail = "-- / -- Wh";
         public string CapacityDetail
         {
             get => _capacityDetail;
-            set { _capacityDetail = value; OnPropertyChanged(); }
+            set { SetProperty(ref _capacityDetail, value); }
         }
 
         private string _temperature = "-- °C";
         public string Temperature
         {
             get => _temperature;
-            set { _temperature = value; OnPropertyChanged(); }
+            set { SetProperty(ref _temperature, value); }
         }
 
         private int _chargeLimit = 100;
@@ -294,14 +322,14 @@ namespace BatteryMonitor3.ViewModels
         public bool IsPinned
         {
             get => _isPinned;
-            set { _isPinned = value; OnPropertyChanged(); }
+            set { SetProperty(ref _isPinned, value); }
         }
 
         private bool _isSettingsOpen = false;
         public bool IsSettingsOpen
         {
             get => _isSettingsOpen;
-            set { _isSettingsOpen = value; OnPropertyChanged(); }
+            set { SetProperty(ref _isSettingsOpen, value); }
         }
 
         public bool IsStartupEnabled
@@ -318,7 +346,7 @@ namespace BatteryMonitor3.ViewModels
         public ImageSource? TrayIconSource
         {
             get => _trayIconSource;
-            set { _trayIconSource = value; OnPropertyChanged(); }
+            set { SetProperty(ref _trayIconSource, value); }
         }
 
         private void UpdateTrayIconIfNeeded(BatteryInfo data)

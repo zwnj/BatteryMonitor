@@ -10,10 +10,14 @@ namespace BatteryMonitor3.Services
     {
         private bool _supportsTemperature = true;
         private uint? _cachedDesignCapacity;
+        private uint _cachedFullChargedCapacity;
         private uint _cachedCycleCount;
         private double _cachedTemperature = 0;
 
-        public BatteryInfo GetBatteryStatus(bool refreshCycleCount = false, bool refreshTemperature = false)
+        public BatteryInfo GetBatteryStatus(
+            bool refreshFullChargedCapacity = false,
+            bool refreshCycleCount = false,
+            bool refreshTemperature = false)
         {
             var info = new BatteryInfo();
 
@@ -43,12 +47,16 @@ namespace BatteryMonitor3.Services
                 }
                 info.DesignCapacity = _cachedDesignCapacity ?? 0;
 
-                var fullCharge = new ManagementObjectSearcher(@"root\WMI", "SELECT * FROM BatteryFullChargedCapacity")
-                    .Get().Cast<ManagementObject>().FirstOrDefault();
-                if (fullCharge != null)
+                if (_cachedFullChargedCapacity == 0 || refreshFullChargedCapacity)
                 {
-                    info.FullChargedCapacity = Convert.ToUInt32(fullCharge["FullChargedCapacity"]);
+                    var fullCharge = new ManagementObjectSearcher(@"root\WMI", "SELECT * FROM BatteryFullChargedCapacity")
+                        .Get().Cast<ManagementObject>().FirstOrDefault();
+                    if (fullCharge != null)
+                    {
+                        _cachedFullChargedCapacity = Convert.ToUInt32(fullCharge["FullChargedCapacity"]);
+                    }
                 }
+                info.FullChargedCapacity = _cachedFullChargedCapacity;
 
                 if (info.FullChargedCapacity > 0)
                 {

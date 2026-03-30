@@ -16,7 +16,7 @@ namespace BatteryMonitor3
 {
     public partial class App : Application
     {
-        private static readonly TimeSpan ForegroundUpdateInterval = TimeSpan.FromSeconds(1);
+        private static readonly TimeSpan ForegroundUpdateInterval = TimeSpan.FromSeconds(3);
         private static readonly TimeSpan BackgroundUpdateInterval = TimeSpan.FromSeconds(10);
 
         private TaskbarIcon? _notifyIcon;
