@@ -49,6 +49,27 @@ namespace BatteryMonitor3.Views
             UpdateTheme();
         }
 
+        public void PrepareForOpen()
+        {
+            ResetVisualState();
+            TransitionOverlay.BeginAnimation(Image.OpacityProperty, null);
+            TransitionOverlay.Visibility = Visibility.Collapsed;
+            TransitionOverlay.Source = null;
+        }
+
+        public void ResetVisualState()
+        {
+            if (MainBorder == null) return;
+
+            MainBorder.BeginAnimation(UIElement.OpacityProperty, null);
+            PopupScale.BeginAnimation(ScaleTransform.ScaleXProperty, null);
+            PopupScale.BeginAnimation(ScaleTransform.ScaleYProperty, null);
+
+            MainBorder.Opacity = 1;
+            PopupScale.ScaleX = 1;
+            PopupScale.ScaleY = 1;
+        }
+
         private void UpdateTheme()
         {
             var uri = ThemeManager.GetThemeUri(ThemeManager.CurrentTheme);
@@ -164,6 +185,8 @@ namespace BatteryMonitor3.Views
 
         private void PopupView_Loaded(object sender, RoutedEventArgs e)
         {
+            ResetVisualState();
+
             // TaskbarIcon は UserControl を Popup 内に配置している
             _parentPopup = this.Parent as Popup;
 
@@ -346,11 +369,11 @@ namespace BatteryMonitor3.Views
 
         public void AnimateClose(Action onCompleted)
         {
-            if (this.Content is FrameworkElement border && border.Resources["HideAnimation"] is Storyboard sb)
+            if (MainBorder?.Resources["HideAnimation"] is Storyboard sb)
             {
                 var clone = sb.Clone();
                 clone.Completed += (s, e) => onCompleted();
-                clone.Begin(border);
+                clone.Begin(MainBorder);
             }
             else
             {

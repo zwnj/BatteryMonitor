@@ -35,10 +35,12 @@ namespace BatteryMonitor3.Services
         private Win32Point _lastHoverPos;
         private DateTime _lastMoveTime;
         private DateTime _lastRightClickTime = DateTime.MinValue;
+        private DateTime _lastExplicitOpenTime = DateTime.MinValue;
 
         private bool _isStickyMode = false;
         private bool _savedStickyMode = false;
         private bool _savedStaysOpen = false;
+        private static readonly TimeSpan ExplicitOpenGracePeriod = TimeSpan.FromMilliseconds(600);
 
         public TrayIconController(TaskbarIcon notifyIcon, Func<bool> isPinnedDelegate)
         {
@@ -197,34 +199,7 @@ namespace BatteryMonitor3.Services
                 }
                 else
                 {
-                    // Open: 新規に開く
-                    _isStickyMode = true; // クリック扱い
-                    popup.StaysOpen = false; // フォーカスが外れたら閉じる挙動
-                    _notifyIcon.ShowTrayPopup();
-                    
-                    // 表示直後にフォーカスをあてる
-                    // HACK: グローバルショートカット経由だとバックグラウンドプロセス扱いになるため、
-                    // AttachThreadInputを使って無理やり最前面化する
-                    if (popup.Child is UIElement child)
-                    {
-                        // Loadedより少し低い優先度で実行する必要があるか？
-                        // 実際にはLoadedで問題ない
-                        child.Dispatcher.BeginInvoke(DispatcherPriority.Loaded, new Action(() =>  
-                        {
-                            bool foreResult = false;
-                            if (PresentationSource.FromVisual(child) is System.Windows.Interop.HwndSource source)
-                            {
-                                foreResult = ForceForegroundWindow(source.Handle);
-                            }
-                            
-                            bool focusResult = child.Focus();
-                            // 手動でマウスキャプチャはしない。外部クリックによる他のウィンドウのアクティブ化を妨げ、
-                            // StaysOpen=false のロジックを壊してしまうため。
-                            // bool captureResult = Mouse.Capture(child);
-
-                            Logger.Info($"ショートカット起動: Foreground={foreResult}, Focus={focusResult}");
-                        }));
-                    }
+                    OpenExplicitPopup(popup);
                 }
             }
         }
@@ -295,8 +270,7 @@ namespace BatteryMonitor3.Services
                 else
                 {
                     // 開いていないので通常通り表示
-                    popup.StaysOpen = false;
-                    _notifyIcon.ShowTrayPopup();
+                    OpenExplicitPopup(popup);
                 }
             }
         }
@@ -332,12 +306,18 @@ namespace BatteryMonitor3.Services
         private void OnPopupClosed(object? sender, EventArgs e)
         {
             _isStickyMode = false; // いかなる理由でもポップアップが閉じたらモードをリセット
+
+            if (sender is Popup popup && popup.Child is PopupView view)
+            {
+                view.ResetVisualState();
+            }
         }
 
         private void WatchdogTimer_Tick(object? sender, EventArgs e)
         {
             if (_isStickyMode) return; // Stickyモード中はWatchdogを実行しない
             if (_notifyIcon?.TrayPopupResolved is not Popup popup || !popup.IsOpen) return;
+            if (DateTime.Now - _lastExplicitOpenTime < ExplicitOpenGracePeriod) return;
 
             bool isMouseOverPopup = popup.IsMouseOver;
             bool isMouseOverIcon = false; 
@@ -381,6 +361,46 @@ namespace BatteryMonitor3.Services
         {
             _watchdogTimer?.Stop();
             _showDelayTimer?.Stop();
+        }
+
+        private void OpenExplicitPopup(Popup popup)
+        {
+            _showDelayTimer?.Stop();
+            _isStickyMode = true;
+            _lastExplicitOpenTime = DateTime.Now;
+
+            if (popup.Child is PopupView view)
+            {
+                view.PrepareForOpen();
+            }
+
+            // まずは安定して表示を成立させ、フォーカス取得後に自動クローズへ戻す。
+            popup.StaysOpen = true;
+            _notifyIcon.ShowTrayPopup();
+
+            if (popup.Child is not UIElement child)
+            {
+                popup.StaysOpen = false;
+                return;
+            }
+
+            child.Dispatcher.BeginInvoke(DispatcherPriority.Loaded, new Action(() =>
+            {
+                bool foreResult = false;
+                if (PresentationSource.FromVisual(child) is System.Windows.Interop.HwndSource source)
+                {
+                    foreResult = ForceForegroundWindow(source.Handle);
+                }
+
+                bool focusResult = child.Focus();
+
+                if (popup.IsOpen && !_isPinnedDelegate())
+                {
+                    popup.StaysOpen = false;
+                }
+
+                Logger.Info($"明示表示: Foreground={foreResult}, Focus={focusResult}");
+            }));
         }
     }
 }
