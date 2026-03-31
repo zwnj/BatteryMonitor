@@ -18,6 +18,7 @@
   <ItemGroup>
     <None Include="Images\TrayIconsIco\*.ico">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
     </None>
   </ItemGroup>
 
