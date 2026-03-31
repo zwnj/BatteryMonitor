@@ -100,7 +100,9 @@
                         <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
                             <ToggleButton IsChecked="{Binding IsPinned, Mode=TwoWay}"
                                           Background="Transparent" BorderBrush="Transparent"
-                                          Margin="0,0,10,0">
+                                          Margin="0,0,10,0"
+                                          Focusable="False"
+                                          IsTabStop="False">
                                 <ToggleButton.Template>
                                     <ControlTemplate TargetType="ToggleButton">
                                         <Grid Background="Transparent">
@@ -126,7 +128,9 @@
                                     </ControlTemplate>
                                 </ToggleButton.Template>
                             </ToggleButton>
-                            <ToggleButton x:Name="ThemeToggle" Background="Transparent" BorderBrush="Transparent" Click="OnThemeToggleClick" Margin="10,0,0,0" Width="46" Height="24">
+                            <ToggleButton x:Name="ThemeToggle" Background="Transparent" BorderBrush="Transparent" Click="OnThemeToggleClick" Margin="10,0,0,0" Width="46" Height="24"
+                                          Focusable="False"
+                                          IsTabStop="False">
                                 <ToggleButton.Template>
                                     <ControlTemplate TargetType="ToggleButton">
                                         <Grid>
@@ -177,7 +181,9 @@
                                     </ControlTemplate>
                                 </ToggleButton.Template>
                             </ToggleButton>
-                            <Button Command="{Binding ToggleSettingsCommand}" Background="Transparent" BorderBrush="Transparent" Margin="5,0,0,0" Width="30" Height="30" ToolTip="設定">
+                            <Button Command="{Binding ToggleSettingsCommand}" Background="Transparent" BorderBrush="Transparent" Margin="5,0,0,0" Width="30" Height="30" ToolTip="設定"
+                                    Focusable="False"
+                                    IsTabStop="False">
                                 <TextBlock Text="⚙" FontSize="18" Foreground="{DynamicResource IconDefaultBrush}" VerticalAlignment="Center" HorizontalAlignment="Center"/>
                                 <Button.Template>
                                     <ControlTemplate TargetType="Button">

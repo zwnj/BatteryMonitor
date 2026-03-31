@@ -37,11 +37,15 @@ namespace BatteryMonitor3.Services
         private DateTime _lastMoveTime;
         private DateTime _lastRightClickTime = DateTime.MinValue;
         private DateTime _lastExplicitOpenTime = DateTime.MinValue;
+        private DateTime _lastShortcutToggleTime = DateTime.MinValue;
 
         private bool _isStickyMode = false;
+        private bool _isExplicitMode = false;
+        private bool _isCloseAnimating = false;
         private bool _savedStickyMode = false;
         private bool _savedStaysOpen = false;
         private static readonly TimeSpan ExplicitOpenGracePeriod = TimeSpan.FromMilliseconds(600);
+        private static readonly TimeSpan ShortcutToggleCooldown = TimeSpan.FromMilliseconds(250);
 
         public TrayIconController(TaskbarIcon notifyIcon, Func<bool> isPinnedDelegate)
         {
@@ -86,6 +90,7 @@ namespace BatteryMonitor3.Services
                     
                     // 固定モードへ移行
                     _isStickyMode = true;
+                    _isExplicitMode = true;
                     popup.StaysOpen = true;
                 }
             }
@@ -98,9 +103,6 @@ namespace BatteryMonitor3.Services
                     if (_isStickyMode)
                     {
                         // Stickyモード（クリック表示状態）へ戻る
-                        
-                        // StaysOpen=false に切り替える際、即座に閉じないようにするため、
-                        // まずフォーカス/アクティブ化を確実に行う
                         if (popup.Child is UIElement child)
                         {
                             if (PresentationSource.FromVisual(child) is System.Windows.Interop.HwndSource source)
@@ -109,12 +111,14 @@ namespace BatteryMonitor3.Services
                             }
                             child.Focus();
                         }
-                        
-                        popup.StaysOpen = false;
+
+                        _isExplicitMode = true;
+                        popup.StaysOpen = true;
                     }
                     else
                     {
                         // ホバーモード（マウス移動で表示状態）へ戻る
+                        _isExplicitMode = false;
                         popup.StaysOpen = true; // Watchdogによって制御される
                     }
                 }
@@ -139,6 +143,22 @@ namespace BatteryMonitor3.Services
         [System.Runtime.InteropServices.DllImport("kernel32.dll")]
         private static extern uint GetCurrentThreadId();
 
+        private bool TryActivatePopupWindow(IntPtr hWnd)
+        {
+            try
+            {
+                bool foregroundResult = SetForegroundWindow(hWnd);
+                SetActiveWindow(hWnd);
+                SetFocus(hWnd);
+                return foregroundResult;
+            }
+            catch (Exception ex)
+            {
+                Logger.Error("TryActivatePopupWindow 失敗", ex);
+                return false;
+            }
+        }
+
         private bool ForceForegroundWindow(IntPtr hWnd)
         {
             uint foreThread = GetWindowThreadProcessId(GetForegroundWindow(), IntPtr.Zero);
@@ -153,11 +173,7 @@ namespace BatteryMonitor3.Services
                     threadsAttached = AttachThreadInput(foreThread, appThread, true);
                     if (threadsAttached)
                     {
-                        // 最前面へ持ってくる
-                        success = SetForegroundWindow(hWnd);
-                        // 念のため SetActiveWindow と SetFocus も試行
-                        SetActiveWindow(hWnd);
-                        SetFocus(hWnd);
+                        success = TryActivatePopupWindow(hWnd);
                     }
                     else
                     {
@@ -166,9 +182,7 @@ namespace BatteryMonitor3.Services
                 }
                 else
                 {
-                    success = SetForegroundWindow(hWnd);
-                    SetActiveWindow(hWnd);
-                    SetFocus(hWnd);
+                    success = TryActivatePopupWindow(hWnd);
                 }
             }
             catch (Exception ex)
@@ -187,6 +201,11 @@ namespace BatteryMonitor3.Services
 
         public void ShowTrayPopup()
         {
+            if (_isCloseAnimating) return;
+            if (DateTime.Now - _lastShortcutToggleTime < ShortcutToggleCooldown) return;
+
+            _lastShortcutToggleTime = DateTime.Now;
+
             if (_notifyIcon?.TrayPopupResolved is Popup popup)
             {
                 if (popup.IsOpen)
@@ -194,9 +213,7 @@ namespace BatteryMonitor3.Services
                     // Pinned (固定モード) の場合はショートカットで閉じない
                     if (_isPinnedDelegate()) return;
 
-                    // Toggle: 既に開いている場合は閉じる
-                    popup.StaysOpen = false;
-                    _notifyIcon.CloseTrayPopup();
+                    ClosePopupWithAnimation(popup);
                 }
                 else
                 {
@@ -250,13 +267,12 @@ namespace BatteryMonitor3.Services
 
             _showDelayTimer?.Stop();
             _isStickyMode = true;
+            _isExplicitMode = true;
             if (_notifyIcon?.TrayPopupResolved is Popup popup)
             {
                 if (popup.IsOpen)
                 {
-                    // 既に開いている（ホバー等）。
-                    // 重要: StaysOpen=false にする前に必ずフォーカスをあてる。
-                    // フォーカスがタスクトレイアイコンに残ったまま StaysOpen=false にすると即座に閉じてしまう。
+                    // 既に開いている（ホバー等）場合は、明示表示モードへ切り替えてフォーカスを当てる。
                     if (popup.Child is UIElement child)
                     {
                         if (PresentationSource.FromVisual(child) is System.Windows.Interop.HwndSource source)
@@ -265,8 +281,9 @@ namespace BatteryMonitor3.Services
                         }
                         child.Focus();
                     }
-                    
-                    popup.StaysOpen = false; // フォーカス喪失で自動で閉じるようにWPFに任せる
+
+                    popup.StaysOpen = true;
+                    _lastExplicitOpenTime = DateTime.Now;
                 }
                 else
                 {
@@ -296,6 +313,7 @@ namespace BatteryMonitor3.Services
                  if (dist < 40.0) // 40ピクセルの閾値
                  {
                      _isStickyMode = false; // ホバー表示モード
+                     _isExplicitMode = false;
                      if (_notifyIcon?.TrayPopupResolved is Popup popup)
                      {
                          if (popup.IsOpen) return;
@@ -316,6 +334,8 @@ namespace BatteryMonitor3.Services
         private void OnPopupClosed(object? sender, EventArgs e)
         {
             _isStickyMode = false; // いかなる理由でもポップアップが閉じたらモードをリセット
+            _isExplicitMode = false;
+            _isCloseAnimating = false;
 
             if (sender is Popup popup && popup.Child is PopupView view)
             {
@@ -325,9 +345,7 @@ namespace BatteryMonitor3.Services
 
         private void WatchdogTimer_Tick(object? sender, EventArgs e)
         {
-            if (_isStickyMode) return; // Stickyモード中はWatchdogを実行しない
             if (_notifyIcon?.TrayPopupResolved is not Popup popup || !popup.IsOpen) return;
-            if (DateTime.Now - _lastExplicitOpenTime < ExplicitOpenGracePeriod) return;
 
             bool isMouseOverPopup = popup.IsMouseOver;
             bool isMouseOverIcon = false; 
@@ -348,6 +366,20 @@ namespace BatteryMonitor3.Services
             }
 
             if (_isPinnedDelegate()) return; // Do not close when pinned
+
+            if (_isExplicitMode)
+            {
+                if (DateTime.Now - _lastExplicitOpenTime < ExplicitOpenGracePeriod) return;
+
+                bool hasFocus = popup.Child is UIElement child && child.IsKeyboardFocusWithin;
+                if (!hasFocus && !isMouseOverPopup && !isMouseOverIcon)
+                {
+                    ClosePopupWithAnimation(popup);
+                }
+                return;
+            }
+
+            if (_isStickyMode) return; // Stickyモード中はホバー用Watchdogを実行しない
 
             if (!isMouseOverPopup && !isMouseOverIcon)
             {
@@ -377,6 +409,7 @@ namespace BatteryMonitor3.Services
         {
             _showDelayTimer?.Stop();
             _isStickyMode = true;
+            _isExplicitMode = true;
             _lastExplicitOpenTime = DateTime.Now;
 
             if (popup.Child is PopupView view)
@@ -396,23 +429,41 @@ namespace BatteryMonitor3.Services
                 return;
             }
 
-            child.Dispatcher.BeginInvoke(DispatcherPriority.Loaded, new Action(() =>
+            child.Dispatcher.BeginInvoke(DispatcherPriority.Input, new Action(() =>
             {
                 bool foreResult = false;
                 if (PresentationSource.FromVisual(child) is System.Windows.Interop.HwndSource source)
                 {
-                    foreResult = ForceForegroundWindow(source.Handle);
+                    foreResult = TryActivatePopupWindow(source.Handle);
+                    if (!foreResult)
+                    {
+                        foreResult = ForceForegroundWindow(source.Handle);
+                    }
                 }
 
                 bool focusResult = child.Focus();
 
-                if (popup.IsOpen && !_isPinnedDelegate())
-                {
-                    popup.StaysOpen = false;
-                }
-
                 Logger.Info($"明示表示: Foreground={foreResult}, Focus={focusResult}");
             }));
+        }
+
+        private void ClosePopupWithAnimation(Popup popup)
+        {
+            popup.StaysOpen = false;
+
+            if (popup.Child is PopupView view)
+            {
+                _isCloseAnimating = true;
+                view.AnimateClose(() =>
+                {
+                    _isCloseAnimating = false;
+                    _notifyIcon.CloseTrayPopup();
+                });
+                return;
+            }
+
+            _isCloseAnimating = false;
+            _notifyIcon.CloseTrayPopup();
         }
 
         private void ApplyPopupPosition(Popup popup)

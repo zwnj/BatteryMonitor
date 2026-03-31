@@ -13,6 +13,8 @@ namespace BatteryMonitor3.Services.Keyboard
         private const int WH_KEYBOARD_LL = 13;
         private const int WM_KEYDOWN = 0x0100;
         private const int WM_SYSKEYDOWN = 0x0104;
+        private const int WM_KEYUP = 0x0101;
+        private const int WM_SYSKEYUP = 0x0105;
         
         // 右Shiftキーの仮想キーコード (VK_RSHIFT)
         private const int VK_RSHIFT = 0xA1;
@@ -20,6 +22,7 @@ namespace BatteryMonitor3.Services.Keyboard
         // 設定
         private const int REQUIRED_PRESS_COUNT = 2;
         private const int TIMEOUT_MS = 400;
+        private const int ACTIVATION_COOLDOWN_MS = 500;
 
         private static LowLevelKeyboardProc _proc;
         private static IntPtr _hookID = IntPtr.Zero;
@@ -27,6 +30,8 @@ namespace BatteryMonitor3.Services.Keyboard
         // 状態管理
         private int _pressCount = 0;
         private DateTime _lastPressTime = DateTime.MinValue;
+        private DateTime _lastActivationTime = DateTime.MinValue;
+        private bool _isRightShiftDown = false;
 
         public KeyboardHookService()
         {
@@ -54,12 +59,24 @@ namespace BatteryMonitor3.Services.Keyboard
 
                 if (vkCode == VK_RSHIFT)
                 {
-                    OnRightShiftPressed();
+                    if (!_isRightShiftDown)
+                    {
+                        _isRightShiftDown = true;
+                        OnRightShiftPressed();
+                    }
                 }
                 else
                 {
                     // 右Shift以外のキーが押されたらリセット
                     ResetCount();
+                }
+            }
+            else if (nCode >= 0 && (wParam == (IntPtr)WM_KEYUP || wParam == (IntPtr)WM_SYSKEYUP))
+            {
+                int vkCode = Marshal.ReadInt32(lParam);
+                if (vkCode == VK_RSHIFT)
+                {
+                    _isRightShiftDown = false;
                 }
             }
 
@@ -69,6 +86,12 @@ namespace BatteryMonitor3.Services.Keyboard
         private void OnRightShiftPressed()
         {
             DateTime now = DateTime.Now;
+
+            if ((now - _lastActivationTime).TotalMilliseconds < ACTIVATION_COOLDOWN_MS)
+            {
+                ResetCount();
+                return;
+            }
             
             // 前回の押下から時間が空きすぎていたらリセット
             if ((now - _lastPressTime).TotalMilliseconds > TIMEOUT_MS)
@@ -85,6 +108,7 @@ namespace BatteryMonitor3.Services.Keyboard
             if (_pressCount >= REQUIRED_PRESS_COUNT)
             {
                 // トリガー発動
+                _lastActivationTime = now;
                 TriggerActivated?.Invoke(this, EventArgs.Empty);
                 ResetCount();
             }
