@@ -21,6 +21,8 @@ namespace BatteryMonitor3.Views
         private bool _isDragging;
         private Point _lastScreenPoint;
         private Popup? _parentPopup;
+        private IntPtr _lastBackdropHandle = IntPtr.Zero;
+        private ThemeType? _lastBackdropTheme;
 
         public PopupView()
         {
@@ -104,8 +106,7 @@ namespace BatteryMonitor3.Views
             // 適切な色合いでアクリル効果を適用
             if (PresentationSource.FromVisual(this) is HwndSource source)
             {
-                bool isDark = ThemeManager.CurrentTheme == ThemeType.Dark;
-                WindowBackdrop.ApplyAcrylic(source.Handle, isDark);
+                ApplyBackdropIfNeeded(source.Handle);
             }
         }
 
@@ -192,10 +193,31 @@ namespace BatteryMonitor3.Views
             // アクリル効果を適用
             if (PresentationSource.FromVisual(this) is HwndSource source)
             {
-                bool isDark = ThemeManager.CurrentTheme == ThemeType.Dark;
-                WindowBackdrop.ApplyAcrylic(source.Handle, isDark);
-                WindowBackdrop.SetRoundedCorners(source.Handle);
+                ApplyBackdropIfNeeded(source.Handle);
             }
+        }
+
+        private void ApplyBackdropIfNeeded(IntPtr hwnd)
+        {
+            if (hwnd == IntPtr.Zero) return;
+
+            bool handleChanged = _lastBackdropHandle != hwnd;
+            bool themeChanged = _lastBackdropTheme != ThemeManager.CurrentTheme;
+            if (!handleChanged && !themeChanged)
+            {
+                return;
+            }
+
+            bool isDark = ThemeManager.CurrentTheme == ThemeType.Dark;
+            WindowBackdrop.ApplyAcrylic(hwnd, isDark);
+
+            if (handleChanged)
+            {
+                WindowBackdrop.SetRoundedCorners(hwnd);
+            }
+
+            _lastBackdropHandle = hwnd;
+            _lastBackdropTheme = ThemeManager.CurrentTheme;
         }
 
         private void ApplySavedPosition()

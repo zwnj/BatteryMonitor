@@ -66,7 +66,7 @@ namespace BatteryMonitor3.ViewModels
             return true;
         }
 
-        public async void UpdateData(bool isPopupVisible = false)
+        public async void UpdateData(bool isPopupVisible = false, bool forceSecondaryRefresh = false)
         {
             if (_isUpdating) return;
             _isUpdating = true;
@@ -82,6 +82,11 @@ namespace BatteryMonitor3.ViewModels
                 bool refreshSecondary = now - _lastSecondaryRefresh >= secondaryInterval;
 
                 if (isPopupVisible && !_hasLoadedVisibleDetails)
+                {
+                    refreshSecondary = true;
+                }
+
+                if (forceSecondaryRefresh)
                 {
                     refreshSecondary = true;
                 }

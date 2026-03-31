@@ -24,6 +24,7 @@ namespace BatteryMonitor3
         private TrayIconController? _trayIconController;
         private KeyboardHookService? _keyboardHookService;
         private DispatcherTimer? _updateTimer;
+        private DispatcherTimer? _popupDetailRefreshTimer;
 
         protected override void OnStartup(StartupEventArgs e)
         {
@@ -85,6 +86,9 @@ namespace BatteryMonitor3
             _updateTimer = new DispatcherTimer { Interval = BackgroundUpdateInterval };
             _updateTimer.Tick += (s, ev) => _batteryViewModel?.UpdateData(IsPopupOpen());
             _updateTimer.Start();
+
+            _popupDetailRefreshTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(180) };
+            _popupDetailRefreshTimer.Tick += PopupDetailRefreshTimer_Tick;
         }
 
         private void ViewModel_PropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
@@ -104,6 +108,7 @@ namespace BatteryMonitor3
                 popup.Closed -= TrayPopup_Closed;
             }
             _updateTimer?.Stop();
+            _popupDetailRefreshTimer?.Stop();
             _notifyIcon?.Dispose();
             _trayIconController?.Dispose();
             _keyboardHookService?.Dispose();
@@ -129,6 +134,9 @@ namespace BatteryMonitor3
             }
 
             _batteryViewModel?.UpdateData(true);
+
+            _popupDetailRefreshTimer?.Stop();
+            _popupDetailRefreshTimer?.Start();
         }
 
         private void TrayPopup_Closed(object? sender, EventArgs e)
@@ -137,11 +145,19 @@ namespace BatteryMonitor3
             {
                 _updateTimer.Interval = BackgroundUpdateInterval;
             }
+
+            _popupDetailRefreshTimer?.Stop();
         }
 
         private bool IsPopupOpen()
         {
             return _notifyIcon?.TrayPopupResolved is Popup popup && popup.IsOpen;
+        }
+
+        private void PopupDetailRefreshTimer_Tick(object? sender, EventArgs e)
+        {
+            _popupDetailRefreshTimer?.Stop();
+            _batteryViewModel?.UpdateData(true, true);
         }
     }
 }
