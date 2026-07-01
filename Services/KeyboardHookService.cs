@@ -1,7 +1,8 @@
-using System;
+﻿using System;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
 using System.Windows.Input;
+using BatteryMonitor3.Helpers;
 
 namespace BatteryMonitor3.Services.Keyboard
 {
@@ -21,7 +22,7 @@ namespace BatteryMonitor3.Services.Keyboard
 
         // 設定
         private const int REQUIRED_PRESS_COUNT = 2;
-        private const int TIMEOUT_MS = 400;
+        private const int TIMEOUT_MS = 600;
         private const int ACTIVATION_COOLDOWN_MS = 500;
 
         private static LowLevelKeyboardProc _proc;
@@ -62,12 +63,14 @@ namespace BatteryMonitor3.Services.Keyboard
                     if (!_isRightShiftDown)
                     {
                         _isRightShiftDown = true;
+                        Logger.Info("KeyboardHookService detected right shift down");
                         OnRightShiftPressed();
                     }
                 }
                 else
                 {
                     // 右Shift以外のキーが押されたらリセット
+                    Logger.Info($"KeyboardHookService reset by other key vk={vkCode}");
                     ResetCount();
                 }
             }
@@ -89,6 +92,7 @@ namespace BatteryMonitor3.Services.Keyboard
 
             if ((now - _lastActivationTime).TotalMilliseconds < ACTIVATION_COOLDOWN_MS)
             {
+                Logger.Info("KeyboardHookService activation skipped by cooldown");
                 ResetCount();
                 return;
             }
@@ -97,10 +101,12 @@ namespace BatteryMonitor3.Services.Keyboard
             if ((now - _lastPressTime).TotalMilliseconds > TIMEOUT_MS)
             {
                 _pressCount = 1;
+                Logger.Info("KeyboardHookService press count reset to 1");
             }
             else
             {
                 _pressCount++;
+                Logger.Info($"KeyboardHookService press count incremented to {_pressCount}");
             }
 
             _lastPressTime = now;
@@ -109,6 +115,7 @@ namespace BatteryMonitor3.Services.Keyboard
             {
                 // トリガー発動
                 _lastActivationTime = now;
+                Logger.Info("KeyboardHookService trigger activated");
                 TriggerActivated?.Invoke(this, EventArgs.Empty);
                 ResetCount();
             }
@@ -118,6 +125,7 @@ namespace BatteryMonitor3.Services.Keyboard
         {
             _pressCount = 0;
             _lastPressTime = DateTime.MinValue;
+            Logger.Info("KeyboardHookService count reset");
         }
 
         public void Dispose()

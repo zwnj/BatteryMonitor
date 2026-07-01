@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
@@ -33,17 +33,20 @@ namespace BatteryMonitor3.Views
             this.MouseMove += PopupView_MouseMove;
             
             ThemeManager.ThemeChanged += (s, args) => UpdateTheme();
+            Logger.Info("PopupView constructed and event handlers attached");
             
             // 透明効果や電源設定の変更イベントを購読
             Microsoft.Win32.SystemEvents.UserPreferenceChanged += (s, e) => 
             {
                 if (e.Category == Microsoft.Win32.UserPreferenceCategory.General)
                 {
+                    Logger.Info("PopupView UserPreferenceChanged -> CheckTransparencyStatus");
                     Dispatcher.Invoke(() => CheckTransparencyStatus());
                 }
             };
             Microsoft.Win32.SystemEvents.PowerModeChanged += (s, e) =>
             {
+                Logger.Info("PopupView PowerModeChanged -> CheckTransparencyStatus");
                 Dispatcher.Invoke(() => CheckTransparencyStatus());
             };
 
@@ -53,6 +56,7 @@ namespace BatteryMonitor3.Views
 
         public void PrepareForOpen()
         {
+            Logger.Info("PopupView PrepareForOpen");
             ResetVisualState();
             ApplySavedPosition();
             TransitionOverlay.BeginAnimation(Image.OpacityProperty, null);
@@ -75,6 +79,7 @@ namespace BatteryMonitor3.Views
 
         private void UpdateTheme()
         {
+            Logger.Info($"PopupView UpdateTheme current={ThemeManager.CurrentTheme}");
             var uri = ThemeManager.GetThemeUri(ThemeManager.CurrentTheme);
             var newDict = new ResourceDictionary { Source = uri };
 
@@ -144,16 +149,19 @@ namespace BatteryMonitor3.Views
 
             if (!isTransparencyEnabled)
             {
+                Logger.Info("PopupView using opaque background");
                 MainBorder.SetResourceReference(Border.BackgroundProperty, "WindowBackgroundBrush_Opaque");
             }
             else
             {
+                Logger.Info("PopupView using translucent background");
                 MainBorder.SetResourceReference(Border.BackgroundProperty, "WindowBackgroundBrush");
             }
         }
 
         private void OnThemeToggleClick(object sender, RoutedEventArgs e)
         {
+            Logger.Info("PopupView theme toggle clicked");
             // 1. 現在の表示内容をビットマップとしてキャプチャ
             if (MainBorder != null)
             {
@@ -187,6 +195,7 @@ namespace BatteryMonitor3.Views
 
         private void PopupView_Loaded(object sender, RoutedEventArgs e)
         {
+            Logger.Info("PopupView Loaded");
             ResetVisualState();
             ApplySavedPosition();
 
@@ -205,10 +214,12 @@ namespace BatteryMonitor3.Views
             bool themeChanged = _lastBackdropTheme != ThemeManager.CurrentTheme;
             if (!handleChanged && !themeChanged)
             {
+                Logger.Info("PopupView backdrop unchanged");
                 return;
             }
 
             bool isDark = ThemeManager.CurrentTheme == ThemeType.Dark;
+            Logger.Info($"PopupView applying backdrop. handleChanged={handleChanged}, themeChanged={themeChanged}, isDark={isDark}");
             WindowBackdrop.ApplyAcrylic(hwnd, isDark);
 
             if (handleChanged)
@@ -222,6 +233,7 @@ namespace BatteryMonitor3.Views
 
         private void ApplySavedPosition()
         {
+            Logger.Info("PopupView ApplySavedPosition entered");
             // TaskbarIcon は UserControl を Popup 内に配置している
             _parentPopup ??= this.Parent as Popup;
 
@@ -231,11 +243,12 @@ namespace BatteryMonitor3.Views
                 _parentPopup.Placement = PlacementMode.Absolute;
 
                 // 保存された位置を読み込んで適用
-                var settings = AppSettings.Load();
+                var settings = AppSettingsStore.Load();
                 if (!double.IsNaN(settings.WindowLeft) && !double.IsNaN(settings.WindowTop))
                 {
                     _parentPopup.HorizontalOffset = settings.WindowLeft;
                     _parentPopup.VerticalOffset = settings.WindowTop;
+                    Logger.Info($"PopupView using saved position left={settings.WindowLeft}, top={settings.WindowTop}");
                 }
                 else
                 {
@@ -253,6 +266,7 @@ namespace BatteryMonitor3.Views
                             // ここではカーソル位置を左上とする（必要に応じて調整）
                             _parentPopup.HorizontalOffset = logicalPos.X;
                             _parentPopup.VerticalOffset = logicalPos.Y;
+                            Logger.Info($"PopupView using cursor position left={logicalPos.X}, top={logicalPos.Y}");
                         }
                     }
                 }
@@ -261,9 +275,11 @@ namespace BatteryMonitor3.Views
 
         private void PopupView_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
         {
+            Logger.Info($"PopupView MouseLeftButtonDown source={e.OriginalSource?.GetType().Name ?? "null"}");
             // インタラクティブなコントロール（TextBox, Button等）の上でのクリックはドラッグを開始しない
             if (IsInputEelement(e.OriginalSource as DependencyObject))
             {
+                Logger.Info("PopupView MouseLeftButtonDown ignored because input element");
                 return;
             }
 
@@ -279,10 +295,12 @@ namespace BatteryMonitor3.Views
                 _lastScreenPoint = p;
                 
                 this.CaptureMouse();
+                Logger.Info($"PopupView drag started at {_lastScreenPoint.X},{_lastScreenPoint.Y}");
             }
             catch (InvalidOperationException)
             {
                 _isDragging = false;
+                Logger.Info("PopupView drag start failed");
             }
         }
 
@@ -314,6 +332,7 @@ namespace BatteryMonitor3.Views
 
                     // 差異がない場合は処理スキップ
                     if (screenDelta.X == 0 && screenDelta.Y == 0) return;
+                    Logger.Info($"PopupView dragging delta screenX={screenDelta.X}, screenY={screenDelta.Y}");
 
                     // 3. DPIスケーリングを考慮して論理ピクセルに変換
                     var source = PresentationSource.FromVisual(this);
@@ -365,6 +384,7 @@ namespace BatteryMonitor3.Views
 
                         // 計算および更新が完了した後に、今回の座標を「前回」として保存
                         _lastScreenPoint = currentScreenPoint;
+                        Logger.Info($"PopupView drag position newLeft={newH}, newTop={newV}");
                     }
                 }
                 catch (InvalidOperationException)
@@ -372,6 +392,7 @@ namespace BatteryMonitor3.Views
                     // ウィンドウが閉じられたりした場合の安全策
                     _isDragging = false;
                     this.ReleaseMouseCapture();
+                    Logger.Info("PopupView drag interrupted");
                 }
             }
         }
@@ -382,12 +403,13 @@ namespace BatteryMonitor3.Views
             {
                 _isDragging = false;
                 this.ReleaseMouseCapture();
+                Logger.Info("PopupView drag ended");
 
                 // ドラッグ終了時に位置を保存
                 if (_parentPopup != null)
                 {
-                    var currentSettings = AppSettings.Load();
-                    AppSettings.Save(_parentPopup.HorizontalOffset, _parentPopup.VerticalOffset, currentSettings.ChargeLimit);
+                    AppSettingsStore.SaveWindowPosition(_parentPopup.HorizontalOffset, _parentPopup.VerticalOffset);
+                    Logger.Info($"PopupView drag position saved left={_parentPopup.HorizontalOffset}, top={_parentPopup.VerticalOffset}");
                 }
             }
         }
@@ -396,6 +418,7 @@ namespace BatteryMonitor3.Views
 
         public void AnimateClose(Action onCompleted)
         {
+            Logger.Info("PopupView AnimateClose entered");
             if (MainBorder?.Resources["HideAnimation"] is Storyboard sb)
             {
                 var clone = sb.Clone();

@@ -1,4 +1,4 @@
-using Hardcodet.Wpf.TaskbarNotification;
+﻿using Hardcodet.Wpf.TaskbarNotification;
 using System;
 using System.Windows;
 using System.Windows.Controls;
@@ -11,6 +11,7 @@ using BatteryMonitor3.Helpers;
 using BatteryMonitor3.Services;
 using BatteryMonitor3.Services.Keyboard;
 using BatteryMonitor3.ViewModels;
+using Velopack;
 
 namespace BatteryMonitor3
 {
@@ -18,13 +19,23 @@ namespace BatteryMonitor3
     {
         private static readonly TimeSpan ForegroundUpdateInterval = TimeSpan.FromSeconds(3);
         private static readonly TimeSpan BackgroundUpdateInterval = TimeSpan.FromSeconds(10);
+        private static readonly TimeSpan StartupUpdateDelay = TimeSpan.FromSeconds(20);
+        private const string UpdateRepositoryUrl = "https://github.com/OWNER/BatteryMonitor3";
 
         private TaskbarIcon? _notifyIcon;
         private BatteryViewModel? _batteryViewModel;
         private TrayIconController? _trayIconController;
         private KeyboardHookService? _keyboardHookService;
+        private UpdateService? _updateService;
         private DispatcherTimer? _updateTimer;
         private DispatcherTimer? _popupDetailRefreshTimer;
+        private DispatcherTimer? _startupUpdateTimer;
+
+        public App()
+        {
+            VelopackApp.Build().Run();
+            InitializeComponent();
+        }
 
         protected override void OnStartup(StartupEventArgs e)
         {
@@ -47,6 +58,7 @@ namespace BatteryMonitor3
 
             _batteryViewModel = new BatteryViewModel();
             _notifyIcon.DataContext = _batteryViewModel;
+            _updateService = new UpdateService(UpdateRepositoryUrl);
 
             if (_notifyIcon.TrayPopup is FrameworkElement popupContent)
             {
@@ -68,8 +80,14 @@ namespace BatteryMonitor3
                 _keyboardHookService = new KeyboardHookService();
                 _keyboardHookService.TriggerActivated += (s, args) =>
                 {
-                    // UIスレッドで実行
-                    Dispatcher.Invoke(() => _trayIconController?.ShowTrayPopup());
+                    Logger.Info("Shortcut trigger received");
+                    // フック側を待たせないように、UIスレッドへ非同期で渡す
+                    Dispatcher.BeginInvoke(new Action(() =>
+                    {
+                        Logger.Info("Shortcut dispatch started");
+                        _trayIconController?.ShowTrayPopup();
+                        Logger.Info("Shortcut dispatch finished");
+                    }));
                 };
             }
             catch (Exception ex)
@@ -89,6 +107,10 @@ namespace BatteryMonitor3
 
             _popupDetailRefreshTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(180) };
             _popupDetailRefreshTimer.Tick += PopupDetailRefreshTimer_Tick;
+
+            _startupUpdateTimer = new DispatcherTimer { Interval = StartupUpdateDelay };
+            _startupUpdateTimer.Tick += StartupUpdateTimer_Tick;
+            _startupUpdateTimer.Start();
         }
 
         private void ViewModel_PropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
@@ -109,6 +131,7 @@ namespace BatteryMonitor3
             }
             _updateTimer?.Stop();
             _popupDetailRefreshTimer?.Stop();
+            _startupUpdateTimer?.Stop();
             _notifyIcon?.Dispose();
             _trayIconController?.Dispose();
             _keyboardHookService?.Dispose();
@@ -119,6 +142,17 @@ namespace BatteryMonitor3
         private void Exit_Click(object? sender, RoutedEventArgs e)
         {
             this.Shutdown();
+        }
+
+        private async void CheckUpdates_Click(object? sender, RoutedEventArgs e)
+        {
+            if (_updateService == null)
+            {
+                Logger.Info("Manual update check skipped: update service is not initialized");
+                return;
+            }
+
+            await _updateService.CheckPromptAndApplyAsync();
         }
 
         private void OnPowerModeChanged(object sender, Microsoft.Win32.PowerModeChangedEventArgs e)
@@ -158,6 +192,18 @@ namespace BatteryMonitor3
         {
             _popupDetailRefreshTimer?.Stop();
             _batteryViewModel?.UpdateData(true, true);
+        }
+
+        private async void StartupUpdateTimer_Tick(object? sender, EventArgs e)
+        {
+            _startupUpdateTimer?.Stop();
+            if (_updateService == null)
+            {
+                Logger.Info("Startup update check skipped: update service is not initialized");
+                return;
+            }
+
+            await _updateService.CheckForUpdatesSilentlyAsync();
         }
     }
 }

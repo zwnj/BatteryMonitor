@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
@@ -40,7 +40,7 @@ namespace BatteryMonitor3.ViewModels
             string iconDirectory = System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Images", "TrayIconsIco");
             _iconGenerator = new SvgIconGenerator(iconDirectory);
 
-            var settings = AppSettings.Load();
+            var settings = AppSettingsStore.Load();
             _chargeLimit = settings.ChargeLimit;
             TogglePinCommand = new RelayCommand(_ => IsPinned = !IsPinned);
             ToggleSettingsCommand = new RelayCommand(_ => IsSettingsOpen = !IsSettingsOpen);
@@ -119,36 +119,15 @@ namespace BatteryMonitor3.ViewModels
 
                 // --- UIスレッドでの更新処理 ---
 
-                // 1. 電力 (W)
                 double powerW = (data.IsCharging ? data.ChargeRate : data.DischargeRate) / 1000.0;
-
-                // 2. 電圧 (V) - WMIからの正確な値
                 double voltageV = data.Voltage / 1000.0;
-
-                // 3. 電流 (A)
                 double currentA = (voltageV > 0) ? (powerW / voltageV) : 0;
 
-                string powerRateText = (powerW > 0) ? ((data.IsCharging ? "+" : "-") + $"{powerW:F1} W") : "-- W";
-                string subStatusText;
-                if (data.IsCharging)
-                {
-                    subStatusText = (voltageV > 0 && currentA > 0)
-                        ? $"{powerW:F1}W ({voltageV:F1}V / {currentA:F1}A)"
-                        : $"{powerW:F1}W";
-                }
-                else
-                {
-                    subStatusText = (powerW > 0) ? $"消費: {powerW:F1}W" : "待機中";
-                }
-
-                // 4. 残量 (%)
-                BatteryLevel = $"{data.Percent}";
-
-                // トレイ維持に必要な最低限だけ先に更新し、非表示中の文字列整形は避ける。
+                BatteryLevel = BatteryDisplayFormatter.FormatBatteryLevel(data);
                 IsCharging = data.IsCharging;
-                MainStatusText = data.IsCharging ? "充電中" : "バッテリー使用中";
-                PowerRate = powerRateText;
-                SubStatusText = subStatusText;
+                MainStatusText = BatteryDisplayFormatter.FormatMainStatus(data.IsCharging);
+                PowerRate = BatteryDisplayFormatter.FormatPowerRate(data, powerW);
+                SubStatusText = BatteryDisplayFormatter.FormatSubStatus(data, powerW, voltageV, currentA);
                 UpdateTrayIconIfNeeded(data);
 
                 if (!isPopupVisible || !refreshSecondary)
@@ -158,67 +137,12 @@ namespace BatteryMonitor3.ViewModels
 
                 _hasLoadedVisibleDetails = true;
 
-                // 5. 健康度 (%) - WMIからの正確な値
-                double health = 0;
-                if (data.DesignCapacity > 0 && data.FullChargedCapacity > 0)
-                {
-                    health = Math.Min(100.0, (double)data.FullChargedCapacity * 100 / data.DesignCapacity);
-                }
-                Health = (health > 0) ? $"{health:F0} %" : "-- %";
-
-                // 6. サイクルカウント
-                CycleCount = (data.CycleCount > 0) ? $"{data.CycleCount} 回" : "-- 回"; // 0の場合は "-- 回"
-
-                // --- UIプロパティの更新 ---
-                Voltage = (voltageV > 0) ? $"{voltageV:F1} V" : "-- V";
-
-                if (data.IsCharging)
-                {
-                    // 充電完了までの時間 (設定された上限まで)
-                    if (data.ChargeRate > 0)
-                    {
-                        double targetCapacity = data.FullChargedCapacity * (ChargeLimit / 100.0);
-                        double neededCapacity = targetCapacity - data.RemainingCapacity;
-
-                        if (neededCapacity <= 0)
-                        {
-                            RemainingTime = $"充電制限({ChargeLimit}%)に到達";
-                        }
-                        else
-                        {
-                            double hoursLeft = neededCapacity / data.ChargeRate;
-                            TimeSpan ts = TimeSpan.FromHours(hoursLeft);
-                            RemainingTime = $"あと {ts.Hours}時間 {ts.Minutes}分 ({ChargeLimit}%まで)";
-                        }
-                    }
-                    else
-                    {
-                        RemainingTime = "計算中...";
-                    }
-
-                }
-                else
-                {
-                    // 残り駆動時間
-                    if (data.DischargeRate > 0)
-                    {
-                        double hoursLeft = (double)data.RemainingCapacity / data.DischargeRate;
-                        TimeSpan ts = TimeSpan.FromHours(hoursLeft);
-                        RemainingTime = $"あと {ts.Hours}時間 {ts.Minutes}分";
-                    }
-                    else
-                    {
-                        RemainingTime = "-- 時間 -- 分";
-                    }
-                }
-
-                // 新しいデータ項目の更新
-                Temperature = (data.Temperature > -270) ? $"{data.Temperature:F1} °C" : "-- °C";
-                
-                // mWh -> Wh
-                double remWh = data.RemainingCapacity / 1000.0;
-                double fullWh = data.FullChargedCapacity / 1000.0;
-                CapacityDetail = $"{remWh:F1} / {fullWh:F1} Wh";
+                Health = BatteryDisplayFormatter.FormatHealth(data);
+                CycleCount = BatteryDisplayFormatter.FormatCycleCount(data);
+                Voltage = BatteryDisplayFormatter.FormatVoltage(voltageV);
+                RemainingTime = BatteryDisplayFormatter.FormatRemainingTime(data, ChargeLimit);
+                Temperature = BatteryDisplayFormatter.FormatTemperature(data.Temperature);
+                CapacityDetail = BatteryDisplayFormatter.FormatCapacityDetail(data);
             }
             catch (Exception ex)
             {
@@ -314,13 +238,7 @@ namespace BatteryMonitor3.ViewModels
                 {
                     _chargeLimit = value; 
                     OnPropertyChanged();
-                    // 変更があった場合、設定を即座に保存
-                    // 注意: 本来はスロットリングを行うか、終了時に保存すべきだが、簡略化のためここで保存
-                    AppSettings.Save(double.NaN, double.NaN, _chargeLimit); // Window位置を維持または無視するためにNaNを使用
-
-                    // AppSettings.Saveは上書きするため、現在の設定を読み込んでから保存し直す
-                    var current = AppSettings.Load();
-                    AppSettings.Save(current.WindowLeft, current.WindowTop, _chargeLimit);
+                    AppSettingsStore.SaveChargeLimit(_chargeLimit);
                 }
             }
         }

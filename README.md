@@ -1,4 +1,4 @@
-# BatteryMonitor3
+﻿# BatteryMonitor3
 
 BatteryMonitor3 は、Windows のシステムトレイに常駐して、必要なときだけバッテリー情報をすばやく確認できる軽量モニターアプリです。
 

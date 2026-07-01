@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Windows;
 using System.Windows.Controls.Primitives;
 using System.Windows.Input;
@@ -7,6 +7,7 @@ using Hardcodet.Wpf.TaskbarNotification;
 using BatteryMonitor3.Helpers;
 using BatteryMonitor3.Models;
 using BatteryMonitor3.Views;
+using System.Diagnostics;
 
 namespace BatteryMonitor3.Services
 {
@@ -201,25 +202,43 @@ namespace BatteryMonitor3.Services
 
         public void ShowTrayPopup()
         {
-            if (_isCloseAnimating) return;
-            if (DateTime.Now - _lastShortcutToggleTime < ShortcutToggleCooldown) return;
+            var sw = Stopwatch.StartNew();
+            Logger.Info($"ShowTrayPopup entered. closeAnimating={_isCloseAnimating}, pinned={_isPinnedDelegate()}, sticky={_isStickyMode}, explicit={_isExplicitMode}");
+            if (_isCloseAnimating)
+            {
+                Logger.Info("ShowTrayPopup exited: close animation running");
+                return;
+            }
+            if (DateTime.Now - _lastShortcutToggleTime < ShortcutToggleCooldown)
+            {
+                Logger.Info($"ShowTrayPopup exited by cooldown after {sw.ElapsedMilliseconds}ms");
+                return;
+            }
 
             _lastShortcutToggleTime = DateTime.Now;
 
             if (_notifyIcon?.TrayPopupResolved is Popup popup)
             {
+                Logger.Info($"ShowTrayPopup resolved popup. isOpen={popup.IsOpen}, child={popup.Child?.GetType().Name ?? "null"}");
                 if (popup.IsOpen)
                 {
                     // Pinned (固定モード) の場合はショートカットで閉じない
-                    if (_isPinnedDelegate()) return;
+                    if (_isPinnedDelegate())
+                    {
+                        Logger.Info($"ShowTrayPopup kept open because pinned after {sw.ElapsedMilliseconds}ms");
+                        return;
+                    }
 
+                    Logger.Info("ShowTrayPopup closing popup");
                     ClosePopupWithAnimation(popup);
                 }
                 else
                 {
+                    Logger.Info("ShowTrayPopup opening popup");
                     OpenExplicitPopup(popup);
                 }
             }
+            Logger.Info($"ShowTrayPopup exit after {sw.ElapsedMilliseconds}ms");
         }
 
         private void MyNotifyIcon_TrayMouseMove(object? sender, RoutedEventArgs e)
@@ -233,25 +252,31 @@ namespace BatteryMonitor3.Services
                 _lastHoverPos = pt;
             }
 
+            Logger.Info($"TrayMouseMove at {_lastHoverPos.X},{_lastHoverPos.Y} popupOpen={_notifyIcon?.TrayPopupResolved is Popup p && p.IsOpen} sticky={_isStickyMode} pinned={_isPinnedDelegate()}");
+
             if (_notifyIcon?.TrayPopupResolved is Popup popup && !popup.IsOpen && !_isStickyMode && !_isPinnedDelegate())
             {
                 if (_showDelayTimer != null && !_showDelayTimer.IsEnabled)
                 {
                     _showDelayTimer.Start();
+                    Logger.Info("Hover show timer started");
                 }
             }
         }
 
         private void MyNotifyIcon_TrayLeftMouseDown(object? sender, RoutedEventArgs e)
         {
+            Logger.Info($"TrayLeftMouseDown entered. pinned={_isPinnedDelegate()}, sticky={_isStickyMode}, explicit={_isExplicitMode}");
             if (_isPinnedDelegate()) 
             {
                 if (_notifyIcon?.TrayPopupResolved is Popup p && !p.IsOpen)
                 {
+                    Logger.Info("TrayLeftMouseDown requesting popup show (pinned)");
                     _notifyIcon.ShowTrayPopup();
                 }
                 else if (_notifyIcon?.TrayPopupResolved is Popup existingPopup)
                 {
+                     Logger.Info("TrayLeftMouseDown focusing existing pinned popup");
                      // 既に開いている場合はフォーカスのみ行う
                      if (existingPopup.Child is UIElement child)
                      {
@@ -272,6 +297,7 @@ namespace BatteryMonitor3.Services
             {
                 if (popup.IsOpen)
                 {
+                    Logger.Info("TrayLeftMouseDown popup already open");
                     // 既に開いている（ホバー等）場合は、明示表示モードへ切り替えてフォーカスを当てる。
                     if (popup.Child is UIElement child)
                     {
@@ -287,6 +313,7 @@ namespace BatteryMonitor3.Services
                 }
                 else
                 {
+                    Logger.Info("TrayLeftMouseDown opening explicit popup");
                     // 開いていないので通常通り表示
                     OpenExplicitPopup(popup);
                 }
@@ -296,13 +323,14 @@ namespace BatteryMonitor3.Services
         private void OnShowTimerTick(object? sender, EventArgs e)
         {
             _showDelayTimer?.Stop();
+            Logger.Info("Hover show timer tick");
             
             // 待機中にコンテキストメニューが開かれたら中断
-            if (_notifyIcon?.ContextMenu?.IsOpen == true) return;
-            if (DateTime.Now - _lastExplicitOpenTime < ExplicitOpenGracePeriod) return;
+            if (_notifyIcon?.ContextMenu?.IsOpen == true) { Logger.Info("Hover show timer aborted: context menu open"); return; }
+            if (DateTime.Now - _lastExplicitOpenTime < ExplicitOpenGracePeriod) { Logger.Info("Hover show timer aborted: explicit grace period"); return; }
             
             // 猶予期間: 右クリック直後（例: 1.0秒以内）はホバー表示を抑制
-            if ((DateTime.Now - _lastRightClickTime).TotalSeconds < 1.0) return;
+            if ((DateTime.Now - _lastRightClickTime).TotalSeconds < 1.0) { Logger.Info("Hover show timer aborted: right-click grace period"); return; }
             
             if (GetCursorPos(out Win32Point currentPt))
             {
@@ -310,8 +338,9 @@ namespace BatteryMonitor3.Services
                  double dy = currentPt.Y - _lastHoverPos.Y;
                  double dist = Math.Sqrt(dx*dx + dy*dy);
 
-                 if (dist < 40.0) // 40ピクセルの閾値
-                 {
+                  if (dist < 40.0) // 40ピクセルの閾値
+                  {
+                     Logger.Info($"Hover show timer opening popup, dist={dist:F1}");
                      _isStickyMode = false; // ホバー表示モード
                      _isExplicitMode = false;
                      if (_notifyIcon?.TrayPopupResolved is Popup popup)
@@ -333,6 +362,7 @@ namespace BatteryMonitor3.Services
 
         private void OnPopupClosed(object? sender, EventArgs e)
         {
+            Logger.Info("Popup closed");
             _isStickyMode = false; // いかなる理由でもポップアップが閉じたらモードをリセット
             _isExplicitMode = false;
             _isCloseAnimating = false;
@@ -374,6 +404,7 @@ namespace BatteryMonitor3.Services
                 bool hasFocus = popup.Child is UIElement child && child.IsKeyboardFocusWithin;
                 if (!hasFocus && !isMouseOverPopup && !isMouseOverIcon)
                 {
+                    Logger.Info("Watchdog closing explicit popup");
                     ClosePopupWithAnimation(popup);
                 }
                 return;
@@ -391,10 +422,12 @@ namespace BatteryMonitor3.Services
                 // アニメーションして閉じる
                 if (popup.Child is PopupView view)
                 {
+                    Logger.Info("Watchdog closing hover popup with animation");
                     view.AnimateClose(() => _notifyIcon.CloseTrayPopup());
                     return; 
                 }
 
+                Logger.Info("Watchdog closing hover popup immediately");
                 _notifyIcon.CloseTrayPopup();
             }
         }
@@ -407,6 +440,8 @@ namespace BatteryMonitor3.Services
 
         private void OpenExplicitPopup(Popup popup)
         {
+            var sw = Stopwatch.StartNew();
+            Logger.Info($"OpenExplicitPopup entered. child={popup.Child?.GetType().Name ?? "null"}");
             _showDelayTimer?.Stop();
             _isStickyMode = true;
             _isExplicitMode = true;
@@ -414,23 +449,29 @@ namespace BatteryMonitor3.Services
 
             if (popup.Child is PopupView view)
             {
+                Logger.Info("OpenExplicitPopup PrepareForOpen");
                 view.PrepareForOpen();
             }
 
+            Logger.Info("OpenExplicitPopup ApplyPopupPosition");
             ApplyPopupPosition(popup);
 
             // まずは安定して表示を成立させ、フォーカス取得後に自動クローズへ戻す。
             popup.StaysOpen = true;
+            Logger.Info("OpenExplicitPopup ShowTrayPopup");
             _notifyIcon.ShowTrayPopup();
 
             if (popup.Child is not UIElement child)
             {
                 popup.StaysOpen = false;
+                Logger.Info($"OpenExplicitPopup exited without UIElement child after {sw.ElapsedMilliseconds}ms");
                 return;
             }
 
             child.Dispatcher.BeginInvoke(DispatcherPriority.Input, new Action(() =>
             {
+                var focusSw = Stopwatch.StartNew();
+                Logger.Info("OpenExplicitPopup focus begin");
                 bool foreResult = false;
                 if (PresentationSource.FromVisual(child) is System.Windows.Interop.HwndSource source)
                 {
@@ -443,12 +484,14 @@ namespace BatteryMonitor3.Services
 
                 bool focusResult = child.Focus();
 
-                Logger.Info($"明示表示: Foreground={foreResult}, Focus={focusResult}");
+                Logger.Info($"明示表示: Foreground={foreResult}, Focus={focusResult}, focusElapsed={focusSw.ElapsedMilliseconds}ms");
             }));
+            Logger.Info($"OpenExplicitPopup exit after {sw.ElapsedMilliseconds}ms");
         }
 
         private void ClosePopupWithAnimation(Popup popup)
         {
+            Logger.Info("ClosePopupWithAnimation entered");
             popup.StaysOpen = false;
 
             if (popup.Child is PopupView view)
@@ -456,6 +499,7 @@ namespace BatteryMonitor3.Services
                 _isCloseAnimating = true;
                 view.AnimateClose(() =>
                 {
+                    Logger.Info("ClosePopupWithAnimation animation completed");
                     _isCloseAnimating = false;
                     _notifyIcon.CloseTrayPopup();
                 });
@@ -463,23 +507,27 @@ namespace BatteryMonitor3.Services
             }
 
             _isCloseAnimating = false;
+            Logger.Info("ClosePopupWithAnimation closing immediately");
             _notifyIcon.CloseTrayPopup();
         }
 
         private void ApplyPopupPosition(Popup popup)
         {
+            Logger.Info("ApplyPopupPosition entered");
             popup.Placement = PlacementMode.Absolute;
 
-            var settings = AppSettings.Load();
+            var settings = AppSettingsStore.Load();
             if (!double.IsNaN(settings.WindowLeft) && !double.IsNaN(settings.WindowTop))
             {
                 popup.HorizontalOffset = settings.WindowLeft;
                 popup.VerticalOffset = settings.WindowTop;
+                Logger.Info($"ApplyPopupPosition using saved position left={settings.WindowLeft}, top={settings.WindowTop}");
                 return;
             }
 
             if (!GetCursorPos(out Win32Point pt))
             {
+                Logger.Info("ApplyPopupPosition could not read cursor position");
                 return;
             }
 
@@ -487,6 +535,7 @@ namespace BatteryMonitor3.Services
             {
                 popup.HorizontalOffset = pt.X;
                 popup.VerticalOffset = pt.Y;
+                Logger.Info($"ApplyPopupPosition using raw cursor position x={pt.X}, y={pt.Y}");
                 return;
             }
 
@@ -495,12 +544,14 @@ namespace BatteryMonitor3.Services
             {
                 popup.HorizontalOffset = pt.X;
                 popup.VerticalOffset = pt.Y;
+                Logger.Info($"ApplyPopupPosition using raw cursor position (no source) x={pt.X}, y={pt.Y}");
                 return;
             }
 
             var logicalPos = source.CompositionTarget.TransformFromDevice.Transform(new Point(pt.X, pt.Y));
             popup.HorizontalOffset = logicalPos.X;
             popup.VerticalOffset = logicalPos.Y;
+            Logger.Info($"ApplyPopupPosition using logical cursor position x={logicalPos.X}, y={logicalPos.Y}");
         }
     }
 }
