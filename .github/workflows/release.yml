@@ -5,6 +5,11 @@ on:
     tags:
       - "v*"
   workflow_dispatch:
+    inputs:
+      version:
+        description: "Release version without the leading v"
+        required: true
+        type: string
 
 permissions:
   contents: write
@@ -22,33 +27,36 @@ jobs:
         with:
           dotnet-version: "8.0.x"
 
+      - name: Determine release version
+        id: version
+        shell: pwsh
+        run: |
+          if ("${{ github.ref_type }}" -eq "tag") {
+            $version = "${{ github.ref_name }}".TrimStart('v')
+          } else {
+            $version = "${{ inputs.version }}"
+          }
+
+          "version=$version" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+
       - name: Restore dependencies
         run: dotnet restore BatteryMonitor3.csproj
 
       - name: Publish application
-        run: dotnet publish BatteryMonitor3.csproj -c Release -r win-x64 --self-contained false -o publish/win-x64
+        run: dotnet publish BatteryMonitor3.csproj -c Release -r win-x64 --self-contained false -o publish
 
-      - name: Determine package name
-        id: package
+      - name: Install Velopack CLI
+        run: dotnet tool install -g vpk --version 1.2.0
+
+      - name: Download latest release for delta generation
         shell: pwsh
-        run: |
-          $version = if ("${{ github.ref_type }}" -eq "tag") { "${{ github.ref_name }}" } else { "manual-${{ github.run_number }}" }
-          $zipName = "BatteryMonitor3-$version-win-x64.zip"
-          "version=$version" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
-          "zip_name=$zipName" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+        continue-on-error: true
+        run: vpk download github --repoUrl https://github.com/${{ github.repository }}
 
-      - name: Create zip package
+      - name: Pack release
         shell: pwsh
-        run: Compress-Archive -Path publish/win-x64/* -DestinationPath ${{ steps.package.outputs.zip_name }}
+        run: vpk pack -u BatteryMonitor3 -v ${{ steps.version.outputs.version }} -p publish
 
-      - name: Upload workflow artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: ${{ steps.package.outputs.zip_name }}
-          path: ${{ steps.package.outputs.zip_name }}
-
-      - name: Upload to GitHub Release
-        if: startsWith(github.ref, 'refs/tags/')
-        uses: softprops/action-gh-release@v2
-        with:
-          files: ${{ steps.package.outputs.zip_name }}
+      - name: Upload release to GitHub Releases
+        shell: pwsh
+        run: vpk upload github --repoUrl https://github.com/${{ github.repository }} --publish --releaseName "BatteryMonitor3 ${{ steps.version.outputs.version }}" --tag v${{ steps.version.outputs.version }}

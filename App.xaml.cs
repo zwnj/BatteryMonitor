@@ -20,7 +20,7 @@ namespace BatteryMonitor3
         private static readonly TimeSpan ForegroundUpdateInterval = TimeSpan.FromSeconds(3);
         private static readonly TimeSpan BackgroundUpdateInterval = TimeSpan.FromSeconds(10);
         private static readonly TimeSpan StartupUpdateDelay = TimeSpan.FromSeconds(20);
-        private const string UpdateRepositoryUrl = "https://github.com/OWNER/BatteryMonitor3";
+        private const string UpdateRepositoryUrl = "https://github.com/zwnj/BatteryMonitor";
 
         private TaskbarIcon? _notifyIcon;
         private BatteryViewModel? _batteryViewModel;
