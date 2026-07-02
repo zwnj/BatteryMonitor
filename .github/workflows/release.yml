@@ -51,7 +51,7 @@ jobs:
       - name: Download latest release for delta generation
         shell: pwsh
         continue-on-error: true
-        run: vpk download github --repoUrl https://github.com/${{ github.repository }}
+        run: vpk download github --repoUrl https://github.com/${{ github.repository }} --token ${{ secrets.GITHUB_TOKEN }}
 
       - name: Pack release
         shell: pwsh
@@ -59,4 +59,4 @@ jobs:
 
       - name: Upload release to GitHub Releases
         shell: pwsh
-        run: vpk upload github --repoUrl https://github.com/${{ github.repository }} --publish --releaseName "BatteryMonitor3 ${{ steps.version.outputs.version }}" --tag v${{ steps.version.outputs.version }}
+        run: vpk upload github --repoUrl https://github.com/${{ github.repository }} --token ${{ secrets.GITHUB_TOKEN }} --publish --releaseName "BatteryMonitor3 ${{ steps.version.outputs.version }}" --tag v${{ steps.version.outputs.version }}
