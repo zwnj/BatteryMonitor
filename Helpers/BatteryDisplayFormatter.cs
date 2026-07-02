@@ -1,6 +1,6 @@
-﻿using BatteryMonitor3.Models;
+﻿using BatteryMonitor.Models;
 
-namespace BatteryMonitor3.Helpers
+namespace BatteryMonitor.Helpers
 {
     public static class BatteryDisplayFormatter
     {

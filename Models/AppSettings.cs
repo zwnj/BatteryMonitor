@@ -2,7 +2,7 @@
 using System.IO;
 using System.Text.Json;
 
-namespace BatteryMonitor3.Models
+namespace BatteryMonitor.Models
 {
     public class AppSettings
     {
@@ -12,7 +12,7 @@ namespace BatteryMonitor3.Models
 
         private static string SettingsPath => Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-            "BatteryMonitor3",
+            "BatteryMonitor",
             "settings.json");
 
         public static void Save(double left, double top, int chargeLimit)

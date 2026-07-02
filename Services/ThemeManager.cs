@@ -2,7 +2,7 @@
 using System.Linq;
 using System.Windows;
 
-namespace BatteryMonitor3.Services
+namespace BatteryMonitor.Services
 {
     public enum ThemeType
     {

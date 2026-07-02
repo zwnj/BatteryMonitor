@@ -1,10 +1,10 @@
 ﻿using System;
 using System.Linq;
 using System.Management;
-using BatteryMonitor3.Models;
-using BatteryMonitor3.Helpers;
+using BatteryMonitor.Models;
+using BatteryMonitor.Helpers;
 
-namespace BatteryMonitor3.Services
+namespace BatteryMonitor.Services
 {
     public class BatteryService
     {

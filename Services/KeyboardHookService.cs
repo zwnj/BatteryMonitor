@@ -2,9 +2,9 @@
 using System.Diagnostics;
 using System.Runtime.InteropServices;
 using System.Windows.Input;
-using BatteryMonitor3.Helpers;
+using BatteryMonitor.Helpers;
 
-namespace BatteryMonitor3.Services.Keyboard
+namespace BatteryMonitor.Services.Keyboard
 {
     public class KeyboardHookService : IDisposable
     {

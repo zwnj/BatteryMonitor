@@ -1,6 +1,6 @@
-﻿using BatteryMonitor3.Models;
+﻿using BatteryMonitor.Models;
 
-namespace BatteryMonitor3.Services
+namespace BatteryMonitor.Services
 {
     public static class AppSettingsStore
     {

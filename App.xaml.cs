@@ -7,13 +7,13 @@ using System.Windows.Input;
 using System.Windows.Threading;
 using System.Windows.Media;
 
-using BatteryMonitor3.Helpers;
-using BatteryMonitor3.Services;
-using BatteryMonitor3.Services.Keyboard;
-using BatteryMonitor3.ViewModels;
+using BatteryMonitor.Helpers;
+using BatteryMonitor.Services;
+using BatteryMonitor.Services.Keyboard;
+using BatteryMonitor.ViewModels;
 using Velopack;
 
-namespace BatteryMonitor3
+namespace BatteryMonitor
 {
     public partial class App : Application
     {

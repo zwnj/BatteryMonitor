@@ -5,11 +5,11 @@ using System.Runtime.CompilerServices;
 using System.Windows.Media;
 using System.Windows.Input;
 
-using BatteryMonitor3.Services;
-using BatteryMonitor3.Helpers;
-using BatteryMonitor3.Models;
+using BatteryMonitor.Services;
+using BatteryMonitor.Helpers;
+using BatteryMonitor.Models;
 
-namespace BatteryMonitor3.ViewModels
+namespace BatteryMonitor.ViewModels
 {
     public class BatteryViewModel : INotifyPropertyChanged
     {

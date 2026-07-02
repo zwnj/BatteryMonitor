@@ -2,7 +2,7 @@
 # Visual Studio Version 17
 VisualStudioVersion = 17.5.2.0
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BatteryMonitor3", "BatteryMonitor3.csproj", "{2CB8A311-FBE0-552B-4CE7-B63ADAF48652}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BatteryMonitor", "BatteryMonitor.csproj", "{2CB8A311-FBE0-552B-4CE7-B63ADAF48652}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

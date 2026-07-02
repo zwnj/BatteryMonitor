@@ -1,4 +1,4 @@
-# リファクタリング分析メモ
+﻿# リファクタリング分析メモ
 
 このメモは、現状実装を読んで「どこを改善すると効果が大きいか」を整理したものです。
 2026-07-01 時点のコードを根拠にしています。
@@ -14,7 +14,7 @@
 
 ## 1. `BatteryViewModel` の責務集中
 
-[`ViewModels/BatteryViewModel.cs`](C:/Users/yushin/source/repos/BatteryMonitor3/BatteryMonitor3/ViewModels/BatteryViewModel.cs) は、単なる表示モデルを超えて多くの役割を持っています。
+[`ViewModels/BatteryViewModel.cs`](../ViewModels/BatteryViewModel.cs) は、単なる表示モデルを超えて多くの役割を持っています。
 
 根拠:
 
@@ -24,9 +24,9 @@
 
 該当箇所:
 
-- [`BatteryViewModel.cs:69`](C:/Users/yushin/source/repos/BatteryMonitor3/BatteryMonitor3/ViewModels/BatteryViewModel.cs#L69)
-- [`BatteryViewModel.cs:307`](C:/Users/yushin/source/repos/BatteryMonitor3/BatteryMonitor3/ViewModels/BatteryViewModel.cs#L307)
-- [`BatteryViewModel.cs:357`](C:/Users/yushin/source/repos/BatteryMonitor3/BatteryMonitor3/ViewModels/BatteryViewModel.cs#L357)
+- [`BatteryViewModel.cs:69`](../ViewModels/BatteryViewModel.cs#L69)
+- [`BatteryViewModel.cs:307`](../ViewModels/BatteryViewModel.cs#L307)
+- [`BatteryViewModel.cs:357`](../ViewModels/BatteryViewModel.cs#L357)
 
 改善候補:
 
@@ -53,8 +53,8 @@
 
 該当箇所:
 
-- [`TrayIconController.cs:469`](C:/Users/yushin/source/repos/BatteryMonitor3/BatteryMonitor3/Services/TrayIconController.cs#L469)
-- [`PopupView.xaml.cs:223`](C:/Users/yushin/source/repos/BatteryMonitor3/BatteryMonitor3/Views/PopupView.xaml.cs#L223)
+- [`TrayIconController.cs:469`](../Services/TrayIconController.cs#L469)
+- [`PopupView.xaml.cs:223`](../Views/PopupView.xaml.cs#L223)
 
 改善候補:
 
@@ -80,7 +80,7 @@
 
 該当箇所:
 
-- [`BatteryViewModel.cs:317`](C:/Users/yushin/source/repos/BatteryMonitor3/BatteryMonitor3/ViewModels/BatteryViewModel.cs#L317)
+- [`BatteryViewModel.cs:317`](../ViewModels/BatteryViewModel.cs#L317)
 
 気になる点:
 
@@ -114,7 +114,7 @@
 
 該当箇所:
 
-- [`PopupView.xaml.cs:35`](C:/Users/yushin/source/repos/BatteryMonitor3/BatteryMonitor3/Views/PopupView.xaml.cs#L35)
+- [`PopupView.xaml.cs:35`](../Views/PopupView.xaml.cs#L35)
 
 懸念:
 
@@ -132,8 +132,8 @@
 
 該当箇所:
 
-- [`KeyboardHookService.cs:11`](C:/Users/yushin/source/repos/BatteryMonitor3/BatteryMonitor3/Services/KeyboardHookService.cs#L11)
-- [`KeyboardHookService.cs:27`](C:/Users/yushin/source/repos/BatteryMonitor3/BatteryMonitor3/Services/KeyboardHookService.cs#L27)
+- [`KeyboardHookService.cs:11`](../Services/KeyboardHookService.cs#L11)
+- [`KeyboardHookService.cs:27`](../Services/KeyboardHookService.cs#L27)
 
 改善候補:
 
@@ -149,7 +149,7 @@
 
 ## 5. 起動時オーケストレーション
 
-[`App.xaml.cs`](C:/Users/yushin/source/repos/BatteryMonitor3/BatteryMonitor3/App.xaml.cs) はアプリ全体の配線を担っていて、現状では自然な役割です。
+[`App.xaml.cs`](../App.xaml.cs) はアプリ全体の配線を担っていて、現状では自然な役割です。
 ただし、責務はかなり広めです。
 
 根拠:
@@ -164,7 +164,7 @@
 
 該当箇所:
 
-- [`App.xaml.cs:29`](C:/Users/yushin/source/repos/BatteryMonitor3/BatteryMonitor3/App.xaml.cs#L29)
+- [`App.xaml.cs:29`](../App.xaml.cs#L29)
 
 改善候補:
 
@@ -185,6 +185,6 @@
 
 ## 補足
 
-現状は `dotnet build BatteryMonitor3.sln` が通っています。
+現状は `dotnet build BatteryMonitor.sln` が通っています。
 ただし、ビルド警告は残っているので、次のリファクタ候補の一部はそこに直結しています。
 

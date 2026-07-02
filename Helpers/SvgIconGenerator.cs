@@ -4,7 +4,7 @@ using System.IO;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 
-namespace BatteryMonitor3.Helpers
+namespace BatteryMonitor.Helpers
 {
     public class SvgIconGenerator
     {

@@ -4,12 +4,12 @@ using System.Windows.Controls.Primitives;
 using System.Windows.Input;
 using System.Windows.Threading;
 using Hardcodet.Wpf.TaskbarNotification;
-using BatteryMonitor3.Helpers;
-using BatteryMonitor3.Models;
-using BatteryMonitor3.Views;
+using BatteryMonitor.Helpers;
+using BatteryMonitor.Models;
+using BatteryMonitor.Views;
 using System.Diagnostics;
 
-namespace BatteryMonitor3.Services
+namespace BatteryMonitor.Services
 {
     public class TrayIconController : IDisposable
     {

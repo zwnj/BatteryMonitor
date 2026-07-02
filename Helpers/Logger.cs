@@ -3,7 +3,7 @@ using System.IO;
 using System.Text;
 using System.Windows;
 
-namespace BatteryMonitor3.Helpers
+namespace BatteryMonitor.Helpers
 {
     public static class Logger
     {

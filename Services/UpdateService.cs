@@ -1,13 +1,13 @@
-using System;
+﻿using System;
 using System.Threading.Tasks;
 using System.Windows;
 
-using BatteryMonitor3.Helpers;
+using BatteryMonitor.Helpers;
 
 using Velopack;
 using Velopack.Sources;
 
-namespace BatteryMonitor3.Services
+namespace BatteryMonitor.Services
 {
     public sealed class UpdateService
     {

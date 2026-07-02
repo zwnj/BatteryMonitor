@@ -1,4 +1,4 @@
-﻿# BatteryMonitor3 リポジトリ用メモ
+﻿# BatteryMonitor リポジトリ用メモ
 
 このリポジトリで作業する Codex 向けの補足ルールです。
 
@@ -15,7 +15,7 @@
 - アプリは .NET 8 の WPF で作られている。
 - 画面の主役はメインウィンドウではなく、トレイアイコンとポップアップ。
 - バッテリー情報は WMI から取得している。
-- 設定は `%LOCALAPPDATA%\BatteryMonitor3\settings.json` に保存している。
+- 設定は `%LOCALAPPDATA%\BatteryMonitor\settings.json` に保存している。
 - 自動起動は `schtasks` を使って管理している。
 
 ## 主要な責務
@@ -41,7 +41,7 @@
 ## 確認コマンド
 
 ```powershell
-dotnet build BatteryMonitor3.sln
+dotnet build BatteryMonitor.sln
 ```
 
 必要なら、リファクタの方針が固まった段階でこのファイルを更新してよい。

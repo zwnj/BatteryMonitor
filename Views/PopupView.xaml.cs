@@ -7,11 +7,11 @@ using System.Windows.Interop;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
 
-using BatteryMonitor3.Services;
-using BatteryMonitor3.Helpers;
-using BatteryMonitor3.Models;
+using BatteryMonitor.Services;
+using BatteryMonitor.Helpers;
+using BatteryMonitor.Models;
 
-namespace BatteryMonitor3.Views
+namespace BatteryMonitor.Views
 {
     /// <summary>
     /// PopupView.xaml の相互作用ロジック

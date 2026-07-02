@@ -3,11 +3,11 @@ using System.Diagnostics;
 using System.IO;
 using System.Reflection;
 
-namespace BatteryMonitor3.Services
+namespace BatteryMonitor.Services
 {
     public static class StartupManager
     {
-        private const string TaskName = "BatteryMonitor3AutoStart";
+        private const string TaskName = "BatteryMonitorAutoStart";
 
         public static bool IsStartupEnabled()
         {
@@ -52,7 +52,7 @@ namespace BatteryMonitor3.Services
                     string xmlContent = $@"<?xml version=""1.0"" encoding=""UTF-16""?>
 <Task version=""1.2"" xmlns=""http://schemas.microsoft.com/windows/2004/02/mit/task"">
   <RegistrationInfo>
-    <Description>BatteryMonitor3 Auto Start</Description>
+    <Description>BatteryMonitor Auto Start</Description>
   </RegistrationInfo>
   <Triggers>
     <LogonTrigger>

@@ -1,4 +1,4 @@
-﻿namespace BatteryMonitor3.Models
+﻿namespace BatteryMonitor.Models
 {
     // アプリ内データ受け渡し用
     public struct BatteryInfo

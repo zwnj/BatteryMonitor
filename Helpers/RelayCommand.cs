@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Windows.Input;
 
-namespace BatteryMonitor3.Helpers
+namespace BatteryMonitor.Helpers
 {
     public class RelayCommand : ICommand
     {

@@ -1,4 +1,4 @@
-# BatteryMonitor3 Release Procedure
+﻿# BatteryMonitor Release Procedure
 
 このリポジトリでは、GitHub Releases を Velopack の配布元として使う。
 
@@ -13,7 +13,7 @@
 ## 通常リリース
 
 1. `main` に必要な変更をコミットする。
-2. ローカルで `dotnet build BatteryMonitor3.sln` を通す。
+2. ローカルで `dotnet build BatteryMonitor.sln` を通す。
 3. `v1.0.2` のようなタグを切る。
 4. タグを push する。
 5. GitHub Actions の `Release` workflow が Velopack パッケージを作成し、GitHub Release にアップロードする。
