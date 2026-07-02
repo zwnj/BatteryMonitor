@@ -59,6 +59,7 @@ namespace BatteryMonitor
             _batteryViewModel = new BatteryViewModel();
             _notifyIcon.DataContext = _batteryViewModel;
             _updateService = new UpdateService(UpdateRepositoryUrl);
+            _batteryViewModel.VersionText = _updateService.GetCurrentVersionText();
 
             if (_notifyIcon.TrayPopup is FrameworkElement popupContent)
             {

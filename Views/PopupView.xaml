@@ -316,6 +316,8 @@
                                 <TextBlock Text="%" Foreground="{DynamicResource PrimaryTextBrush}" FontSize="16" VerticalAlignment="Center" Margin="5,0,0,0"/>
                             </StackPanel>
                             <TextBlock Text="※設定値まで充電されるまでの時間を計算します" Foreground="{DynamicResource TertiaryTextBrush}" FontSize="11" Margin="0,5,0,0"/>
+
+                            <TextBlock Text="{Binding VersionText, StringFormat=バージョン: {0}}" Foreground="{DynamicResource TertiaryTextBrush}" FontSize="11" HorizontalAlignment="Center" Margin="0,18,0,0"/>
                         </StackPanel>
                     </Grid>
                 </Border>

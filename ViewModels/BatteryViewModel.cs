@@ -34,6 +34,8 @@ namespace BatteryMonitor.ViewModels
 
         private readonly SvgIconGenerator _iconGenerator;
 
+        private string _versionText = "v?";
+
         public BatteryViewModel()
         {
             _service = new BatteryService();
@@ -48,6 +50,12 @@ namespace BatteryMonitor.ViewModels
 
         public ICommand TogglePinCommand { get; }
         public ICommand ToggleSettingsCommand { get; }
+
+        public string VersionText
+        {
+            get => _versionText;
+            set { SetProperty(ref _versionText, value); }
+        }
 
         private void OnPropertyChanged([CallerMemberName] string? name = null)
         {

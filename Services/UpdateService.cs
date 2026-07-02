@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Reflection;
 using System.Threading.Tasks;
 using System.Windows;
 
@@ -25,6 +26,39 @@ namespace BatteryMonitor.Services
         private UpdateManager CreateManager()
         {
             return new UpdateManager(new GithubSource(_repositoryUrl, _accessToken, _includePrerelease));
+        }
+
+        public string GetCurrentVersionText()
+        {
+            try
+            {
+                var manager = CreateManager();
+                var installedVersion = manager.CurrentVersion?.ToString();
+                if (!string.IsNullOrWhiteSpace(installedVersion))
+                {
+                    return $"v{installedVersion}";
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.Error("Failed to resolve Velopack version", ex);
+            }
+
+            var assembly = Assembly.GetEntryAssembly();
+            var informational = assembly?.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion;
+            if (!string.IsNullOrWhiteSpace(informational))
+            {
+                var normalized = informational.Split('+', StringSplitOptions.RemoveEmptyEntries)[0];
+                return normalized.StartsWith("v", StringComparison.OrdinalIgnoreCase) ? normalized : $"v{normalized}";
+            }
+
+            var assemblyVersion = assembly?.GetName().Version?.ToString();
+            if (!string.IsNullOrWhiteSpace(assemblyVersion))
+            {
+                return $"v{assemblyVersion}";
+            }
+
+            return "v?";
         }
 
         public async Task CheckForUpdatesSilentlyAsync()
