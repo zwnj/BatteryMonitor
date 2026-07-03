@@ -45,6 +45,7 @@ namespace BatteryMonitor.Services
         private bool _isCloseAnimating = false;
         private bool _savedStickyMode = false;
         private bool _savedStaysOpen = false;
+        private long _popupOpenSequence;
         private static readonly TimeSpan ExplicitOpenGracePeriod = TimeSpan.FromMilliseconds(600);
         private static readonly TimeSpan ShortcutToggleCooldown = TimeSpan.FromMilliseconds(250);
 
@@ -441,6 +442,7 @@ namespace BatteryMonitor.Services
         private void OpenExplicitPopup(Popup popup)
         {
             var sw = Stopwatch.StartNew();
+            var openId = System.Threading.Interlocked.Increment(ref _popupOpenSequence);
             Logger.Info($"OpenExplicitPopup entered. child={popup.Child?.GetType().Name ?? "null"}");
             _showDelayTimer?.Stop();
             _isStickyMode = true;
@@ -449,6 +451,7 @@ namespace BatteryMonitor.Services
 
             if (popup.Child is PopupView view)
             {
+                view.OpenTraceId = openId;
                 Logger.Info("OpenExplicitPopup PrepareForOpen");
                 view.PrepareForOpen();
             }
@@ -460,6 +463,7 @@ namespace BatteryMonitor.Services
             popup.StaysOpen = true;
             Logger.Info("OpenExplicitPopup ShowTrayPopup");
             _notifyIcon.ShowTrayPopup();
+            Logger.Info($"OpenExplicitPopup ShowTrayPopup returned after {sw.ElapsedMilliseconds}ms");
 
             if (popup.Child is not UIElement child)
             {

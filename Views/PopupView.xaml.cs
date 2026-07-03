@@ -6,6 +6,7 @@ using System.Windows.Input;
 using System.Windows.Interop;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
+using System.Diagnostics;
 
 using BatteryMonitor.Services;
 using BatteryMonitor.Helpers;
@@ -23,6 +24,7 @@ namespace BatteryMonitor.Views
         private Popup? _parentPopup;
         private IntPtr _lastBackdropHandle = IntPtr.Zero;
         private ThemeType? _lastBackdropTheme;
+        public long OpenTraceId { get; set; }
 
         public PopupView()
         {
@@ -56,12 +58,16 @@ namespace BatteryMonitor.Views
 
         public void PrepareForOpen()
         {
-            Logger.Info("PopupView PrepareForOpen");
+            var sw = Stopwatch.StartNew();
+            Logger.Info($"PopupView PrepareForOpen entered trace={OpenTraceId}");
             ResetVisualState();
+            Logger.Info($"PopupView PrepareForOpen ResetVisualState completed trace={OpenTraceId} elapsed={sw.ElapsedMilliseconds}ms");
             ApplySavedPosition();
+            Logger.Info($"PopupView PrepareForOpen ApplySavedPosition completed trace={OpenTraceId} elapsed={sw.ElapsedMilliseconds}ms");
             TransitionOverlay.BeginAnimation(Image.OpacityProperty, null);
             TransitionOverlay.Visibility = Visibility.Collapsed;
             TransitionOverlay.Source = null;
+            Logger.Info($"PopupView PrepareForOpen exit trace={OpenTraceId} elapsed={sw.ElapsedMilliseconds}ms");
         }
 
         public void ResetVisualState()
@@ -79,7 +85,8 @@ namespace BatteryMonitor.Views
 
         private void UpdateTheme()
         {
-            Logger.Info($"PopupView UpdateTheme current={ThemeManager.CurrentTheme}");
+            var sw = Stopwatch.StartNew();
+            Logger.Info($"PopupView UpdateTheme current={ThemeManager.CurrentTheme} trace={OpenTraceId}");
             var uri = ThemeManager.GetThemeUri(ThemeManager.CurrentTheme);
             var newDict = new ResourceDictionary { Source = uri };
 
@@ -113,6 +120,8 @@ namespace BatteryMonitor.Views
             {
                 ApplyBackdropIfNeeded(source.Handle);
             }
+
+            Logger.Info($"PopupView UpdateTheme exit trace={OpenTraceId} elapsed={sw.ElapsedMilliseconds}ms");
         }
 
         private void CheckTransparencyStatus()
@@ -195,45 +204,56 @@ namespace BatteryMonitor.Views
 
         private void PopupView_Loaded(object sender, RoutedEventArgs e)
         {
-            Logger.Info("PopupView Loaded");
+            var sw = Stopwatch.StartNew();
+            Logger.Info($"PopupView Loaded trace={OpenTraceId}");
             ResetVisualState();
+            Logger.Info($"PopupView Loaded ResetVisualState completed trace={OpenTraceId} elapsed={sw.ElapsedMilliseconds}ms");
             ApplySavedPosition();
+            Logger.Info($"PopupView Loaded ApplySavedPosition completed trace={OpenTraceId} elapsed={sw.ElapsedMilliseconds}ms");
 
             // アクリル効果を適用
             if (PresentationSource.FromVisual(this) is HwndSource source)
             {
                 ApplyBackdropIfNeeded(source.Handle);
+                Logger.Info($"PopupView Loaded ApplyBackdropIfNeeded completed trace={OpenTraceId} elapsed={sw.ElapsedMilliseconds}ms");
             }
+
+            Logger.Info($"PopupView Loaded exit trace={OpenTraceId} elapsed={sw.ElapsedMilliseconds}ms");
         }
 
         private void ApplyBackdropIfNeeded(IntPtr hwnd)
         {
+            var sw = Stopwatch.StartNew();
             if (hwnd == IntPtr.Zero) return;
 
             bool handleChanged = _lastBackdropHandle != hwnd;
             bool themeChanged = _lastBackdropTheme != ThemeManager.CurrentTheme;
             if (!handleChanged && !themeChanged)
             {
-                Logger.Info("PopupView backdrop unchanged");
+                Logger.Info($"PopupView backdrop unchanged trace={OpenTraceId} elapsed={sw.ElapsedMilliseconds}ms");
                 return;
             }
 
             bool isDark = ThemeManager.CurrentTheme == ThemeType.Dark;
-            Logger.Info($"PopupView applying backdrop. handleChanged={handleChanged}, themeChanged={themeChanged}, isDark={isDark}");
+            Logger.Info($"PopupView applying backdrop. handleChanged={handleChanged}, themeChanged={themeChanged}, isDark={isDark}, trace={OpenTraceId}");
             WindowBackdrop.ApplyAcrylic(hwnd, isDark);
+            Logger.Info($"PopupView ApplyAcrylic completed trace={OpenTraceId} elapsed={sw.ElapsedMilliseconds}ms");
 
             if (handleChanged)
             {
                 WindowBackdrop.SetRoundedCorners(hwnd);
+                Logger.Info($"PopupView SetRoundedCorners completed trace={OpenTraceId} elapsed={sw.ElapsedMilliseconds}ms");
             }
 
             _lastBackdropHandle = hwnd;
             _lastBackdropTheme = ThemeManager.CurrentTheme;
+            Logger.Info($"PopupView ApplyBackdropIfNeeded exit trace={OpenTraceId} elapsed={sw.ElapsedMilliseconds}ms");
         }
 
         private void ApplySavedPosition()
         {
-            Logger.Info("PopupView ApplySavedPosition entered");
+            var sw = Stopwatch.StartNew();
+            Logger.Info($"PopupView ApplySavedPosition entered trace={OpenTraceId}");
             // TaskbarIcon は UserControl を Popup 内に配置している
             _parentPopup ??= this.Parent as Popup;
 
@@ -243,12 +263,14 @@ namespace BatteryMonitor.Views
                 _parentPopup.Placement = PlacementMode.Absolute;
 
                 // 保存された位置を読み込んで適用
+                var loadSw = Stopwatch.StartNew();
                 var settings = AppSettingsStore.Load();
+                Logger.Info($"PopupView loaded settings trace={OpenTraceId} elapsed={loadSw.ElapsedMilliseconds}ms");
                 if (!double.IsNaN(settings.WindowLeft) && !double.IsNaN(settings.WindowTop))
                 {
                     _parentPopup.HorizontalOffset = settings.WindowLeft;
                     _parentPopup.VerticalOffset = settings.WindowTop;
-                    Logger.Info($"PopupView using saved position left={settings.WindowLeft}, top={settings.WindowTop}");
+                    Logger.Info($"PopupView using saved position left={settings.WindowLeft}, top={settings.WindowTop}, trace={OpenTraceId}");
                 }
                 else
                 {
@@ -256,7 +278,8 @@ namespace BatteryMonitor.Views
                     // Placement=Absoluteにしたため、手動で座標を設定する必要がある
                     if (NativeMethods.GetCursorPos(out var p))
                     {
-                                var initialSource = PresentationSource.FromVisual(this);
+                        var sourceSw = Stopwatch.StartNew();
+                        var initialSource = PresentationSource.FromVisual(this);
                         if (initialSource?.CompositionTarget != null)
                         {
                             var matrix = initialSource.CompositionTarget.TransformFromDevice;
@@ -266,11 +289,13 @@ namespace BatteryMonitor.Views
                             // ここではカーソル位置を左上とする（必要に応じて調整）
                             _parentPopup.HorizontalOffset = logicalPos.X;
                             _parentPopup.VerticalOffset = logicalPos.Y;
-                            Logger.Info($"PopupView using cursor position left={logicalPos.X}, top={logicalPos.Y}");
+                            Logger.Info($"PopupView using cursor position left={logicalPos.X}, top={logicalPos.Y}, trace={OpenTraceId}, sourceElapsed={sourceSw.ElapsedMilliseconds}ms");
                         }
                     }
                 }
             }
+
+            Logger.Info($"PopupView ApplySavedPosition exit trace={OpenTraceId} elapsed={sw.ElapsedMilliseconds}ms");
         }
 
         private void PopupView_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
