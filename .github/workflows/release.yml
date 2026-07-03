@@ -34,9 +34,10 @@ jobs:
         with:
           script: |
             const requestedVersion = `${{ inputs.version || '' }}`.trim();
+            const ref = `${context.ref || ''}`;
 
-            if (context.eventName === 'push' && context.refType === 'tag') {
-              const version = context.refName.replace(/^v/i, '');
+            if (context.eventName === 'push' && ref.startsWith('refs/tags/')) {
+              const version = ref.replace(/^refs\/tags\/v?/i, '');
               core.setOutput('version', version);
               core.info(`Using tag version ${version}`);
               return;
