@@ -1,5 +1,6 @@
 <Project>
   <PropertyGroup>
+    <!-- ローカルビルド用の既定値。Release workflow では入力値または自動採番値で上書きする -->
     <AppVersion>1.0.6</AppVersion>
     <Version>$(AppVersion)</Version>
     <AssemblyVersion>$(AppVersion).0</AssemblyVersion>

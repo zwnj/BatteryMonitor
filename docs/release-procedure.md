@@ -7,7 +7,8 @@
 - 配布先リポジトリは `https://github.com/zwnj/BatteryMonitor`
 - アプリ側の更新先 URL は `App.xaml.cs` の `UpdateRepositoryUrl`
 - リリース workflow は `.github/workflows/release.yml`
-- バージョン番号は `Directory.Build.props` の `AppVersion` を更新して揃える
+- バージョン番号は workflow が指定値を使うか、未指定なら最新 Release から patch を 1 つ上げて決める
+- `Directory.Build.props` の `AppVersion` はローカルビルド用の既定値として使う
 - 既存の `v1.0.1` は ZIP 配布の Release で、Velopack 形式ではない
 - Velopack の最初の本番 Release は `v1.0.2` から始める
 
@@ -15,16 +16,17 @@
 
 1. `main` に必要な変更をコミットする。
 2. ローカルで `dotnet build BatteryMonitor.sln` を通す。
-3. `Directory.Build.props` の `AppVersion` と合わせて `v1.0.6` のようなタグを切る。
+3. 必要なら `v1.2.3` のように明示したい版番号を決める。
 4. タグを push する。
 5. GitHub Actions の `Release` workflow が Velopack パッケージを作成し、GitHub Release にアップロードする。
 
 ## 手動リリース確認
 
 1. GitHub Actions から `Release` workflow を手動実行する。
-2. `version` に `Directory.Build.props` の `AppVersion` と同じ値を入れる。
-3. workflow が `vpk pack` と `vpk upload` を実行し、Release を作る。
-4. Release に `Setup.exe` と `nupkg` 群、`RELEASES`、`releases.win.json` が出ていることを確認する。
+2. `version` を空欄にすると、最新 Release から patch が 1 つ上がる。
+3. `version` に値を入れると、その版番号が使われる。
+4. workflow が `vpk pack` と `vpk upload` を実行し、Release を作る。
+5. Release に `Setup.exe` と `nupkg` 群、`RELEASES`、`releases.win.json` が出ていることを確認する。
 
 ## アプリ側の確認
 
