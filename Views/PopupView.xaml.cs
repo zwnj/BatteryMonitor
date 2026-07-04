@@ -24,33 +24,18 @@ namespace BatteryMonitor.Views
         private Popup? _parentPopup;
         private IntPtr _lastBackdropHandle = IntPtr.Zero;
         private ThemeType? _lastBackdropTheme;
+        private bool _runtimeEventsHooked;
         public long OpenTraceId { get; set; }
 
         public PopupView()
         {
             InitializeComponent();
             this.Loaded += PopupView_Loaded;
+            this.Unloaded += PopupView_Unloaded;
             this.MouseLeftButtonDown += PopupView_MouseLeftButtonDown;
             this.MouseLeftButtonUp += PopupView_MouseLeftButtonUp;
             this.MouseMove += PopupView_MouseMove;
-            
-            ThemeManager.ThemeChanged += (s, args) => UpdateTheme();
             Logger.Info("PopupView constructed and event handlers attached");
-            
-            // 透明効果や電源設定の変更イベントを購読
-            Microsoft.Win32.SystemEvents.UserPreferenceChanged += (s, e) => 
-            {
-                if (e.Category == Microsoft.Win32.UserPreferenceCategory.General)
-                {
-                    Logger.Info("PopupView UserPreferenceChanged -> CheckTransparencyStatus");
-                    Dispatcher.Invoke(() => CheckTransparencyStatus());
-                }
-            };
-            Microsoft.Win32.SystemEvents.PowerModeChanged += (s, e) =>
-            {
-                Logger.Info("PopupView PowerModeChanged -> CheckTransparencyStatus");
-                Dispatcher.Invoke(() => CheckTransparencyStatus());
-            };
 
             // 初回のテーマ適用
             UpdateTheme();
@@ -204,6 +189,7 @@ namespace BatteryMonitor.Views
 
         private void PopupView_Loaded(object sender, RoutedEventArgs e)
         {
+            HookRuntimeEvents();
             var sw = Stopwatch.StartNew();
             Logger.Info($"PopupView Loaded trace={OpenTraceId}");
             ResetVisualState();
@@ -219,6 +205,57 @@ namespace BatteryMonitor.Views
             }
 
             Logger.Info($"PopupView Loaded exit trace={OpenTraceId} elapsed={sw.ElapsedMilliseconds}ms");
+        }
+
+        private void PopupView_Unloaded(object sender, RoutedEventArgs e)
+        {
+            UnhookRuntimeEvents();
+        }
+
+        private void HookRuntimeEvents()
+        {
+            if (_runtimeEventsHooked)
+            {
+                return;
+            }
+
+            ThemeManager.ThemeChanged += ThemeManager_ThemeChanged;
+            Microsoft.Win32.SystemEvents.UserPreferenceChanged += SystemEvents_UserPreferenceChanged;
+            Microsoft.Win32.SystemEvents.PowerModeChanged += SystemEvents_PowerModeChanged;
+            _runtimeEventsHooked = true;
+        }
+
+        private void UnhookRuntimeEvents()
+        {
+            if (!_runtimeEventsHooked)
+            {
+                return;
+            }
+
+            ThemeManager.ThemeChanged -= ThemeManager_ThemeChanged;
+            Microsoft.Win32.SystemEvents.UserPreferenceChanged -= SystemEvents_UserPreferenceChanged;
+            Microsoft.Win32.SystemEvents.PowerModeChanged -= SystemEvents_PowerModeChanged;
+            _runtimeEventsHooked = false;
+        }
+
+        private void ThemeManager_ThemeChanged(object? sender, EventArgs e)
+        {
+            UpdateTheme();
+        }
+
+        private void SystemEvents_UserPreferenceChanged(object sender, Microsoft.Win32.UserPreferenceChangedEventArgs e)
+        {
+            if (e.Category == Microsoft.Win32.UserPreferenceCategory.General)
+            {
+                Logger.Info("PopupView UserPreferenceChanged -> CheckTransparencyStatus");
+                Dispatcher.Invoke(() => CheckTransparencyStatus());
+            }
+        }
+
+        private void SystemEvents_PowerModeChanged(object sender, Microsoft.Win32.PowerModeChangedEventArgs e)
+        {
+            Logger.Info("PopupView PowerModeChanged -> CheckTransparencyStatus");
+            Dispatcher.Invoke(() => CheckTransparencyStatus());
         }
 
         private void ApplyBackdropIfNeeded(IntPtr hwnd)
@@ -409,7 +446,6 @@ namespace BatteryMonitor.Views
 
                         // 計算および更新が完了した後に、今回の座標を「前回」として保存
                         _lastScreenPoint = currentScreenPoint;
-                        Logger.Info($"PopupView drag position newLeft={newH}, newTop={newV}");
                     }
                 }
                 catch (InvalidOperationException)

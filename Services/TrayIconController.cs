@@ -30,6 +30,7 @@ namespace BatteryMonitor.Services
 
         private readonly TaskbarIcon _notifyIcon;
         private readonly Func<bool> _isPinnedDelegate;
+        private Popup? _trayPopup;
 
         private DispatcherTimer? _watchdogTimer;
         private DispatcherTimer? _showDelayTimer;
@@ -61,6 +62,8 @@ namespace BatteryMonitor.Services
         {
             if (_notifyIcon.TrayPopupResolved is Popup popup)
             {
+                _trayPopup = popup;
+                popup.Opened += OnPopupOpened;
                 popup.Closed += OnPopupClosed;
             }
 
@@ -69,15 +72,10 @@ namespace BatteryMonitor.Services
 
             _watchdogTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(200) };
             _watchdogTimer.Tick += WatchdogTimer_Tick;
-            _watchdogTimer.Start();
 
             _notifyIcon.TrayMouseMove += MyNotifyIcon_TrayMouseMove;
             _notifyIcon.TrayLeftMouseDown += MyNotifyIcon_TrayLeftMouseDown;
-            _notifyIcon.TrayRightMouseDown += (s, e) => 
-            {
-                _showDelayTimer?.Stop();
-                _lastRightClickTime = DateTime.Now;
-            };
+            _notifyIcon.TrayRightMouseDown += MyNotifyIcon_TrayRightMouseDown;
         }
 
         public void HandlePinStateChange(bool isPinned)
@@ -253,8 +251,6 @@ namespace BatteryMonitor.Services
                 _lastHoverPos = pt;
             }
 
-            Logger.Info($"TrayMouseMove at {_lastHoverPos.X},{_lastHoverPos.Y} popupOpen={_notifyIcon?.TrayPopupResolved is Popup p && p.IsOpen} sticky={_isStickyMode} pinned={_isPinnedDelegate()}");
-
             if (_notifyIcon?.TrayPopupResolved is Popup popup && !popup.IsOpen && !_isStickyMode && !_isPinnedDelegate())
             {
                 if (_showDelayTimer != null && !_showDelayTimer.IsEnabled)
@@ -263,6 +259,12 @@ namespace BatteryMonitor.Services
                     Logger.Info("Hover show timer started");
                 }
             }
+        }
+
+        private void MyNotifyIcon_TrayRightMouseDown(object? sender, RoutedEventArgs e)
+        {
+            _showDelayTimer?.Stop();
+            _lastRightClickTime = DateTime.Now;
         }
 
         private void MyNotifyIcon_TrayLeftMouseDown(object? sender, RoutedEventArgs e)
@@ -367,11 +369,17 @@ namespace BatteryMonitor.Services
             _isStickyMode = false; // いかなる理由でもポップアップが閉じたらモードをリセット
             _isExplicitMode = false;
             _isCloseAnimating = false;
+            _watchdogTimer?.Stop();
 
             if (sender is Popup popup && popup.Child is PopupView view)
             {
                 view.ResetVisualState();
             }
+        }
+
+        private void OnPopupOpened(object? sender, EventArgs e)
+        {
+            _watchdogTimer?.Start();
         }
 
         private void WatchdogTimer_Tick(object? sender, EventArgs e)
@@ -437,6 +445,27 @@ namespace BatteryMonitor.Services
         {
             _watchdogTimer?.Stop();
             _showDelayTimer?.Stop();
+
+            if (_trayPopup != null)
+            {
+                _trayPopup.Opened -= OnPopupOpened;
+                _trayPopup.Closed -= OnPopupClosed;
+                _trayPopup = null;
+            }
+
+            _notifyIcon.TrayMouseMove -= MyNotifyIcon_TrayMouseMove;
+            _notifyIcon.TrayLeftMouseDown -= MyNotifyIcon_TrayLeftMouseDown;
+            _notifyIcon.TrayRightMouseDown -= MyNotifyIcon_TrayRightMouseDown;
+
+            if (_watchdogTimer != null)
+            {
+                _watchdogTimer.Tick -= WatchdogTimer_Tick;
+            }
+
+            if (_showDelayTimer != null)
+            {
+                _showDelayTimer.Tick -= OnShowTimerTick;
+            }
         }
 
         private void OpenExplicitPopup(Popup popup)

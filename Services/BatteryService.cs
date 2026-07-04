@@ -24,8 +24,7 @@ namespace BatteryMonitor.Services
             try
             {
                 // --- 必須のバッテリー情報 ---
-                var status = new ManagementObjectSearcher(@"root\WMI", "SELECT * FROM BatteryStatus")
-                    .Get().Cast<ManagementObject>().FirstOrDefault();
+                using var status = QuerySingle(@"root\WMI", "SELECT * FROM BatteryStatus");
 
                 if (status != null)
                 {
@@ -38,8 +37,7 @@ namespace BatteryMonitor.Services
 
                 if (!_cachedDesignCapacity.HasValue)
                 {
-                    var staticData = new ManagementObjectSearcher(@"root\WMI", "SELECT * FROM BatteryStaticData")
-                        .Get().Cast<ManagementObject>().FirstOrDefault();
+                    using var staticData = QuerySingle(@"root\WMI", "SELECT * FROM BatteryStaticData");
                     if (staticData != null)
                     {
                         _cachedDesignCapacity = Convert.ToUInt32(staticData["DesignedCapacity"]);
@@ -49,8 +47,7 @@ namespace BatteryMonitor.Services
 
                 if (_cachedFullChargedCapacity == 0 || refreshFullChargedCapacity)
                 {
-                    var fullCharge = new ManagementObjectSearcher(@"root\WMI", "SELECT * FROM BatteryFullChargedCapacity")
-                        .Get().Cast<ManagementObject>().FirstOrDefault();
+                    using var fullCharge = QuerySingle(@"root\WMI", "SELECT * FROM BatteryFullChargedCapacity");
                     if (fullCharge != null)
                     {
                         _cachedFullChargedCapacity = Convert.ToUInt32(fullCharge["FullChargedCapacity"]);
@@ -75,8 +72,7 @@ namespace BatteryMonitor.Services
             {
                 try
                 {
-                    var cycleCountData = new ManagementObjectSearcher(@"root\WMI", "SELECT * FROM BatteryCycleCount")
-                        .Get().Cast<ManagementObject>().FirstOrDefault();
+                    using var cycleCountData = QuerySingle(@"root\WMI", "SELECT * FROM BatteryCycleCount");
                     if (cycleCountData != null)
                     {
                         _cachedCycleCount = Convert.ToUInt32(cycleCountData["CycleCount"]);
@@ -94,8 +90,7 @@ namespace BatteryMonitor.Services
             {
                 try
                 {
-                    var thermalData = new ManagementObjectSearcher(@"root\WMI", "SELECT * FROM MSAcpi_ThermalZoneTemperature")
-                        .Get().Cast<ManagementObject>().FirstOrDefault();
+                    using var thermalData = QuerySingle(@"root\WMI", "SELECT * FROM MSAcpi_ThermalZoneTemperature");
                     if (thermalData != null)
                     {
                         // 単位: 1/10 Kelvin
@@ -114,6 +109,13 @@ namespace BatteryMonitor.Services
             info.Temperature = _cachedTemperature;
 
             return info;
+        }
+
+        private static ManagementObject? QuerySingle(string scope, string query)
+        {
+            using var searcher = new ManagementObjectSearcher(scope, query);
+            using var results = searcher.Get();
+            return results.Cast<ManagementObject>().FirstOrDefault();
         }
     }
 }
