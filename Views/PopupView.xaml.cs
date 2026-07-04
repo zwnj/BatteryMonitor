@@ -10,6 +10,7 @@ using System.Diagnostics;
 
 using BatteryMonitor.Services;
 using BatteryMonitor.Helpers;
+using BatteryMonitor.Models;
 
 namespace BatteryMonitor.Views
 {
@@ -45,6 +46,9 @@ namespace BatteryMonitor.Views
             var sw = Stopwatch.StartNew();
             Logger.Info($"PopupView PrepareForOpen entered trace={OpenTraceId}");
             ResetVisualState();
+            Logger.Info($"PopupView PrepareForOpen ResetVisualState completed trace={OpenTraceId} elapsed={sw.ElapsedMilliseconds}ms");
+            ApplySavedPosition();
+            Logger.Info($"PopupView PrepareForOpen ApplySavedPosition completed trace={OpenTraceId} elapsed={sw.ElapsedMilliseconds}ms");
             TransitionOverlay.BeginAnimation(Image.OpacityProperty, null);
             TransitionOverlay.Visibility = Visibility.Collapsed;
             TransitionOverlay.Source = null;
@@ -189,6 +193,9 @@ namespace BatteryMonitor.Views
             var sw = Stopwatch.StartNew();
             Logger.Info($"PopupView Loaded trace={OpenTraceId}");
             ResetVisualState();
+            Logger.Info($"PopupView Loaded ResetVisualState completed trace={OpenTraceId} elapsed={sw.ElapsedMilliseconds}ms");
+            ApplySavedPosition();
+            Logger.Info($"PopupView Loaded ApplySavedPosition completed trace={OpenTraceId} elapsed={sw.ElapsedMilliseconds}ms");
 
             // アクリル効果を適用
             if (PresentationSource.FromVisual(this) is HwndSource source)
@@ -278,6 +285,54 @@ namespace BatteryMonitor.Views
             _lastBackdropHandle = hwnd;
             _lastBackdropTheme = ThemeManager.CurrentTheme;
             Logger.Info($"PopupView ApplyBackdropIfNeeded exit trace={OpenTraceId} elapsed={sw.ElapsedMilliseconds}ms");
+        }
+
+        private void ApplySavedPosition()
+        {
+            var sw = Stopwatch.StartNew();
+            Logger.Info($"PopupView ApplySavedPosition entered trace={OpenTraceId}");
+            // TaskbarIcon は UserControl を Popup 内に配置している
+            _parentPopup ??= this.Parent as Popup;
+
+            if (_parentPopup != null)
+            {
+                // Screen Edgeでのワープ（自動位置補正）を防ぐために Absolute に設定
+                _parentPopup.Placement = PlacementMode.Absolute;
+
+                // 保存された位置を読み込んで適用
+                var loadSw = Stopwatch.StartNew();
+                var settings = AppSettingsStore.Load();
+                Logger.Info($"PopupView loaded settings trace={OpenTraceId} elapsed={loadSw.ElapsedMilliseconds}ms");
+                if (!double.IsNaN(settings.WindowLeft) && !double.IsNaN(settings.WindowTop))
+                {
+                    _parentPopup.HorizontalOffset = settings.WindowLeft;
+                    _parentPopup.VerticalOffset = settings.WindowTop;
+                    Logger.Info($"PopupView using saved position left={settings.WindowLeft}, top={settings.WindowTop}, trace={OpenTraceId}");
+                }
+                else
+                {
+                    // 初回表示時（保存値がない場合）はマウス位置に表示
+                    // Placement=Absoluteにしたため、手動で座標を設定する必要がある
+                    if (NativeMethods.GetCursorPos(out var p))
+                    {
+                        var sourceSw = Stopwatch.StartNew();
+                        var initialSource = PresentationSource.FromVisual(this);
+                        if (initialSource?.CompositionTarget != null)
+                        {
+                            var matrix = initialSource.CompositionTarget.TransformFromDevice;
+                            var logicalPos = matrix.Transform(new Point(p.X, p.Y));
+                            
+                            // カーソルの少し右下に表示、あるいは中央揃え
+                            // ここではカーソル位置を左上とする（必要に応じて調整）
+                            _parentPopup.HorizontalOffset = logicalPos.X;
+                            _parentPopup.VerticalOffset = logicalPos.Y;
+                            Logger.Info($"PopupView using cursor position left={logicalPos.X}, top={logicalPos.Y}, trace={OpenTraceId}, sourceElapsed={sourceSw.ElapsedMilliseconds}ms");
+                        }
+                    }
+                }
+            }
+
+            Logger.Info($"PopupView ApplySavedPosition exit trace={OpenTraceId} elapsed={sw.ElapsedMilliseconds}ms");
         }
 
         private void PopupView_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
