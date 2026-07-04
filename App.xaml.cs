@@ -168,8 +168,6 @@ namespace BatteryMonitor
                 _updateTimer.Interval = ForegroundUpdateInterval;
             }
 
-            _batteryViewModel?.UpdateData(true);
-
             _popupDetailRefreshTimer?.Stop();
             _popupDetailRefreshTimer?.Start();
         }

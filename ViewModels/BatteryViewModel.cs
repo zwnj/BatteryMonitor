@@ -42,7 +42,7 @@ namespace BatteryMonitor.ViewModels
             string iconDirectory = System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Images", "TrayIconsIco");
             _iconGenerator = new SvgIconGenerator(iconDirectory);
 
-            var settings = AppSettingsStore.Load();
+            var settings = AppSettingsStore.Current;
             _chargeLimit = settings.ChargeLimit;
             TogglePinCommand = new RelayCommand(_ => IsPinned = !IsPinned);
             ToggleSettingsCommand = new RelayCommand(_ => IsSettingsOpen = !IsSettingsOpen);

@@ -12,7 +12,9 @@ namespace BatteryMonitor.Helpers
 
         public static void Info(string message)
         {
+#if DEBUG
             WriteLog("INFO", message);
+#endif
         }
 
         public static void Error(string message, Exception? ex = null)
