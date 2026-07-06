@@ -47,8 +47,6 @@ namespace BatteryMonitor.Views
             Logger.Info($"PopupView PrepareForOpen entered trace={OpenTraceId}");
             ResetVisualState();
             Logger.Info($"PopupView PrepareForOpen ResetVisualState completed trace={OpenTraceId} elapsed={sw.ElapsedMilliseconds}ms");
-            ApplySavedPosition();
-            Logger.Info($"PopupView PrepareForOpen ApplySavedPosition completed trace={OpenTraceId} elapsed={sw.ElapsedMilliseconds}ms");
             TransitionOverlay.BeginAnimation(Image.OpacityProperty, null);
             TransitionOverlay.Visibility = Visibility.Collapsed;
             TransitionOverlay.Source = null;
