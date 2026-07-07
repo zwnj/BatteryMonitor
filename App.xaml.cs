@@ -167,9 +167,6 @@ namespace BatteryMonitor
             {
                 _updateTimer.Interval = ForegroundUpdateInterval;
             }
-
-            _popupDetailRefreshTimer?.Stop();
-            _popupDetailRefreshTimer?.Start();
         }
 
         private void TrayPopup_Closed(object? sender, EventArgs e)
