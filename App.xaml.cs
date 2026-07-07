@@ -17,7 +17,7 @@ namespace BatteryMonitor
 {
     public partial class App : Application
     {
-        private static readonly TimeSpan ForegroundUpdateInterval = TimeSpan.FromSeconds(3);
+        private static readonly TimeSpan ForegroundUpdateInterval = TimeSpan.FromSeconds(5);
         private static readonly TimeSpan BackgroundUpdateInterval = TimeSpan.FromSeconds(10);
         private static readonly TimeSpan StartupUpdateDelay = TimeSpan.FromSeconds(20);
         private const string UpdateRepositoryUrl = "https://github.com/zwnj/BatteryMonitor";
