@@ -392,7 +392,6 @@ namespace BatteryMonitor.Views
 
                     // 差異がない場合は処理スキップ
                     if (screenDelta.X == 0 && screenDelta.Y == 0) return;
-                    Logger.Info($"PopupView dragging delta screenX={screenDelta.X}, screenY={screenDelta.Y}");
 
                     // 3. DPIスケーリングを考慮して論理ピクセルに変換
                     var source = PresentationSource.FromVisual(this);
