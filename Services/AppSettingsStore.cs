@@ -5,24 +5,39 @@ namespace BatteryMonitor.Services
     public static class AppSettingsStore
     {
         private static readonly object SyncRoot = new();
-        private static AppSettings? _cachedSettings;
+        private static bool _hasCachedWindowPosition;
+        private static double _cachedWindowLeft = double.NaN;
+        private static double _cachedWindowTop = double.NaN;
 
-        private static AppSettings Clone(AppSettings settings)
+        private static void CacheWindowPosition(AppSettings settings)
         {
-            return new AppSettings
-            {
-                WindowLeft = settings.WindowLeft,
-                WindowTop = settings.WindowTop,
-                ChargeLimit = settings.ChargeLimit,
-            };
+            _cachedWindowLeft = settings.WindowLeft;
+            _cachedWindowTop = settings.WindowTop;
+            _hasCachedWindowPosition = true;
         }
 
         public static AppSettings Load()
         {
+            return AppSettings.Load();
+        }
+
+        public static int LoadChargeLimit()
+        {
+            return AppSettings.Load().ChargeLimit;
+        }
+
+        public static (double Left, double Top, bool HasValue) LoadWindowPosition()
+        {
             lock (SyncRoot)
             {
-                _cachedSettings ??= AppSettings.Load();
-                return Clone(_cachedSettings);
+                if (!_hasCachedWindowPosition)
+                {
+                    var settings = AppSettings.Load();
+                    CacheWindowPosition(settings);
+                }
+
+                bool hasValue = !double.IsNaN(_cachedWindowLeft) && !double.IsNaN(_cachedWindowTop);
+                return (_cachedWindowLeft, _cachedWindowTop, hasValue);
             }
         }
 
@@ -30,7 +45,7 @@ namespace BatteryMonitor.Services
         {
             lock (SyncRoot)
             {
-                _cachedSettings = Clone(settings);
+                CacheWindowPosition(settings);
             }
 
             AppSettings.Save(settings.WindowLeft, settings.WindowTop, settings.ChargeLimit);
@@ -38,23 +53,29 @@ namespace BatteryMonitor.Services
 
         public static void SaveChargeLimit(int chargeLimit)
         {
-            lock (SyncRoot)
+            var (left, top, hasValue) = LoadWindowPosition();
+            if (!hasValue)
             {
-                _cachedSettings ??= AppSettings.Load();
-                _cachedSettings.ChargeLimit = chargeLimit;
-                AppSettings.Save(_cachedSettings.WindowLeft, _cachedSettings.WindowTop, chargeLimit);
+                var settings = AppSettings.Load();
+                left = settings.WindowLeft;
+                top = settings.WindowTop;
             }
+
+            AppSettings.Save(left, top, chargeLimit);
         }
 
         public static void SaveWindowPosition(double left, double top)
         {
+            var chargeLimit = LoadChargeLimit();
+
             lock (SyncRoot)
             {
-                _cachedSettings ??= AppSettings.Load();
-                _cachedSettings.WindowLeft = left;
-                _cachedSettings.WindowTop = top;
-                AppSettings.Save(left, top, _cachedSettings.ChargeLimit);
+                _cachedWindowLeft = left;
+                _cachedWindowTop = top;
+                _hasCachedWindowPosition = true;
             }
+
+            AppSettings.Save(left, top, chargeLimit);
         }
     }
 }

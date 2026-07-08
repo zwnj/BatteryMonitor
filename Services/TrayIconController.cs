@@ -549,12 +549,12 @@ namespace BatteryMonitor.Services
             Logger.Info("ApplyPopupPosition entered");
             popup.Placement = PlacementMode.Absolute;
 
-            var settings = AppSettingsStore.Load();
-            if (!double.IsNaN(settings.WindowLeft) && !double.IsNaN(settings.WindowTop))
+            var (windowLeft, windowTop, hasValue) = AppSettingsStore.LoadWindowPosition();
+            if (hasValue)
             {
-                popup.HorizontalOffset = settings.WindowLeft;
-                popup.VerticalOffset = settings.WindowTop;
-                Logger.Info($"ApplyPopupPosition using saved position left={settings.WindowLeft}, top={settings.WindowTop}");
+                popup.HorizontalOffset = windowLeft;
+                popup.VerticalOffset = windowTop;
+                Logger.Info($"ApplyPopupPosition using saved position left={windowLeft}, top={windowTop}");
                 return;
             }
 

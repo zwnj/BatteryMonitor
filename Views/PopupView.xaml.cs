@@ -309,13 +309,13 @@ namespace BatteryMonitor.Views
 
                 // 保存された位置を読み込んで適用
                 var loadSw = Stopwatch.StartNew();
-                var settings = AppSettingsStore.Load();
+                var (windowLeft, windowTop, hasValue) = AppSettingsStore.LoadWindowPosition();
                 Logger.Info($"PopupView loaded settings trace={OpenTraceId} elapsed={loadSw.ElapsedMilliseconds}ms");
-                if (!double.IsNaN(settings.WindowLeft) && !double.IsNaN(settings.WindowTop))
+                if (hasValue)
                 {
-                    _parentPopup.HorizontalOffset = settings.WindowLeft;
-                    _parentPopup.VerticalOffset = settings.WindowTop;
-                    Logger.Info($"PopupView using saved position left={settings.WindowLeft}, top={settings.WindowTop}, trace={OpenTraceId}");
+                    _parentPopup.HorizontalOffset = windowLeft;
+                    _parentPopup.VerticalOffset = windowTop;
+                    Logger.Info($"PopupView using saved position left={windowLeft}, top={windowTop}, trace={OpenTraceId}");
                 }
                 else
                 {
