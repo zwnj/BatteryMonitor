@@ -99,11 +99,17 @@ namespace BatteryMonitor
             Microsoft.Win32.SystemEvents.PowerModeChanged += OnPowerModeChanged;
 
             // データ更新
-            _batteryViewModel.UpdateData(IsPopupOpen());
+            _ = _batteryViewModel.UpdateData(IsPopupOpen());
             _batteryViewModel.PropertyChanged += ViewModel_PropertyChanged;
 
             _updateTimer = new DispatcherTimer { Interval = BackgroundUpdateInterval };
-            _updateTimer.Tick += (s, ev) => _batteryViewModel?.UpdateData(IsPopupOpen());
+            _updateTimer.Tick += (s, ev) =>
+            {
+                if (_batteryViewModel != null)
+                {
+                    _ = _batteryViewModel.UpdateData(IsPopupOpen());
+                }
+            };
             _updateTimer.Start();
 
             _popupDetailRefreshTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(180) };
@@ -187,7 +193,10 @@ namespace BatteryMonitor
         private void PopupDetailRefreshTimer_Tick(object? sender, EventArgs e)
         {
             _popupDetailRefreshTimer?.Stop();
-            _batteryViewModel?.UpdateData(true, true);
+            if (_batteryViewModel != null)
+            {
+                _ = _batteryViewModel.UpdateData(true, true);
+            }
         }
 
         private async void StartupUpdateTimer_Tick(object? sender, EventArgs e)

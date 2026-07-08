@@ -1,13 +1,15 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
-using System.Windows.Media;
+using System.Threading;
+using System.Threading.Tasks;
 using System.Windows.Input;
+using System.Windows.Media;
 
-using BatteryMonitor.Services;
 using BatteryMonitor.Helpers;
 using BatteryMonitor.Models;
+using BatteryMonitor.Services;
 
 namespace BatteryMonitor.ViewModels
 {
@@ -21,7 +23,9 @@ namespace BatteryMonitor.ViewModels
         private static readonly TimeSpan HiddenSecondaryRefreshInterval = TimeSpan.FromMinutes(5);
 
         private readonly BatteryService _service;
-        private bool _isUpdating = false;
+        private readonly SemaphoreSlim _updateGate = new(1, 1);
+        private readonly SvgIconGenerator _iconGenerator;
+
         private DateTime _lastFullChargedCapacityRefresh = DateTime.MinValue;
         private DateTime _lastTemperatureRefresh = DateTime.MinValue;
         private DateTime _lastCycleCountRefresh = DateTime.MinValue;
@@ -30,11 +34,24 @@ namespace BatteryMonitor.ViewModels
         private int _lastIconBucket = -1;
         private bool? _lastIconChargingState;
 
-        public event PropertyChangedEventHandler? PropertyChanged;
-
-        private readonly SvgIconGenerator _iconGenerator;
-
         private string _versionText = "v?";
+        private string _batteryLevel = "--";
+        private string _mainStatusText = "---";
+        private string _subStatusText = "---";
+        private string _powerRate = "---";
+        private string _voltage = "---";
+        private string _cycleCount = "-- 回";
+        private string _health = "---";
+        private string _remainingTime = "--";
+        private string _capacityDetail = "-- / -- Wh";
+        private string _temperature = "-- °C";
+        private int _chargeLimit = 100;
+        private bool _isCharging;
+        private bool _isPinned = false;
+        private bool _isSettingsOpen = false;
+        private ImageSource? _trayIconSource;
+
+        public event PropertyChangedEventHandler? PropertyChanged;
 
         public BatteryViewModel()
         {
@@ -57,28 +74,18 @@ namespace BatteryMonitor.ViewModels
             set { SetProperty(ref _versionText, value); }
         }
 
-        private void OnPropertyChanged([CallerMemberName] string? name = null)
+        public Task UpdateData(bool isPopupVisible = false, bool forceSecondaryRefresh = false)
         {
-            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
-        }
-
-        private bool SetProperty<T>(ref T field, T value, [CallerMemberName] string? name = null)
-        {
-            if (EqualityComparer<T>.Default.Equals(field, value))
+            if (!_updateGate.Wait(0))
             {
-                return false;
+                return Task.CompletedTask;
             }
 
-            field = value;
-            OnPropertyChanged(name);
-            return true;
+            return UpdateDataCoreAsync(isPopupVisible, forceSecondaryRefresh);
         }
 
-        public async void UpdateData(bool isPopupVisible = false, bool forceSecondaryRefresh = false)
+        private async Task UpdateDataCoreAsync(bool isPopupVisible, bool forceSecondaryRefresh)
         {
-            if (_isUpdating) return;
-            _isUpdating = true;
-
             try
             {
                 var now = DateTime.Now;
@@ -119,24 +126,37 @@ namespace BatteryMonitor.ViewModels
                     _lastSecondaryRefresh = now;
                 }
 
-                // バックグラウンドスレッドでデータを取得・生成
-                var data = await System.Threading.Tasks.Task.Run(() => 
+                int chargeLimit = ChargeLimit;
+                var snapshot = await Task.Run(() =>
                 {
-                    return _service.GetBatteryStatus(refreshFullChargedCapacity, refreshCycleCount, refreshTemperature);
+                    var data = _service.GetBatteryStatus(refreshFullChargedCapacity, refreshCycleCount, refreshTemperature);
+
+                    double powerW = (data.IsCharging ? data.ChargeRate : data.DischargeRate) / 1000.0;
+                    double voltageV = data.Voltage / 1000.0;
+                    double currentA = (voltageV > 0) ? (powerW / voltageV) : 0;
+
+                    return new BatterySnapshot(
+                        BatteryDisplayFormatter.FormatBatteryLevel(data),
+                        data.IsCharging,
+                        BatteryDisplayFormatter.FormatMainStatus(data.IsCharging),
+                        BatteryDisplayFormatter.FormatPowerRate(data, powerW),
+                        BatteryDisplayFormatter.FormatSubStatus(data, powerW, voltageV, currentA),
+                        BatteryDisplayFormatter.FormatHealth(data),
+                        BatteryDisplayFormatter.FormatCycleCount(data),
+                        BatteryDisplayFormatter.FormatVoltage(voltageV),
+                        BatteryDisplayFormatter.FormatRemainingTime(data, chargeLimit),
+                        BatteryDisplayFormatter.FormatCapacityDetail(data),
+                        BatteryDisplayFormatter.FormatTemperature(data.Temperature),
+                        GetIconBucket((int)data.Percent),
+                        data.IsCharging);
                 });
 
-                // --- UIスレッドでの更新処理 ---
-
-                double powerW = (data.IsCharging ? data.ChargeRate : data.DischargeRate) / 1000.0;
-                double voltageV = data.Voltage / 1000.0;
-                double currentA = (voltageV > 0) ? (powerW / voltageV) : 0;
-
-                BatteryLevel = BatteryDisplayFormatter.FormatBatteryLevel(data);
-                IsCharging = data.IsCharging;
-                MainStatusText = BatteryDisplayFormatter.FormatMainStatus(data.IsCharging);
-                PowerRate = BatteryDisplayFormatter.FormatPowerRate(data, powerW);
-                SubStatusText = BatteryDisplayFormatter.FormatSubStatus(data, powerW, voltageV, currentA);
-                UpdateTrayIconIfNeeded(data);
+                BatteryLevel = snapshot.BatteryLevel;
+                IsCharging = snapshot.IsCharging;
+                MainStatusText = snapshot.MainStatusText;
+                PowerRate = snapshot.PowerRate;
+                SubStatusText = snapshot.SubStatusText;
+                UpdateTrayIconIfNeeded(snapshot.TrayIconBucket, snapshot.TrayIconChargingState);
 
                 if (!isPopupVisible || !refreshSecondary)
                 {
@@ -145,12 +165,12 @@ namespace BatteryMonitor.ViewModels
 
                 _hasLoadedVisibleDetails = true;
 
-                Health = BatteryDisplayFormatter.FormatHealth(data);
-                CycleCount = BatteryDisplayFormatter.FormatCycleCount(data);
-                Voltage = BatteryDisplayFormatter.FormatVoltage(voltageV);
-                RemainingTime = BatteryDisplayFormatter.FormatRemainingTime(data, ChargeLimit);
-                Temperature = BatteryDisplayFormatter.FormatTemperature(data.Temperature);
-                CapacityDetail = BatteryDisplayFormatter.FormatCapacityDetail(data);
+                Health = snapshot.Health;
+                CycleCount = snapshot.CycleCount;
+                Voltage = snapshot.Voltage;
+                RemainingTime = snapshot.RemainingTime;
+                Temperature = snapshot.Temperature;
+                CapacityDetail = snapshot.CapacityDetail;
             }
             catch (Exception ex)
             {
@@ -158,104 +178,105 @@ namespace BatteryMonitor.ViewModels
             }
             finally
             {
-                _isUpdating = false;
+                _updateGate.Release();
             }
         }
 
-        // --- プロパティ群 ---
-        private string _batteryLevel = "--";
+        private void OnPropertyChanged([CallerMemberName] string? name = null)
+        {
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
+        }
+
+        private bool SetProperty<T>(ref T field, T value, [CallerMemberName] string? name = null)
+        {
+            if (EqualityComparer<T>.Default.Equals(field, value))
+            {
+                return false;
+            }
+
+            field = value;
+            OnPropertyChanged(name);
+            return true;
+        }
+
         public string BatteryLevel
         {
             get => _batteryLevel;
             set { SetProperty(ref _batteryLevel, value); }
         }
 
-
-
-        private string _mainStatusText = "---";
         public string MainStatusText
         {
             get => _mainStatusText;
             set { SetProperty(ref _mainStatusText, value); }
         }
 
-        private string _subStatusText = "---";
         public string SubStatusText
         {
             get => _subStatusText;
             set { SetProperty(ref _subStatusText, value); }
         }
 
-        private string _powerRate = "---";
         public string PowerRate
         {
             get => _powerRate;
             set { SetProperty(ref _powerRate, value); }
         }
 
-        private string _voltage = "---";
         public string Voltage
         {
             get => _voltage;
             set { SetProperty(ref _voltage, value); }
         }
 
-        private string _cycleCount = "-- 回";
         public string CycleCount
         {
             get => _cycleCount;
             set { SetProperty(ref _cycleCount, value); }
         }
 
-        private string _health = "---";
         public string Health
         {
             get => _health;
             set { SetProperty(ref _health, value); }
         }
 
-        // --- フェーズ2 新規プロパティ ---
-        private string _remainingTime = "--";
         public string RemainingTime
         {
             get => _remainingTime;
             set { SetProperty(ref _remainingTime, value); }
         }
 
-        private string _capacityDetail = "-- / -- Wh";
         public string CapacityDetail
         {
             get => _capacityDetail;
             set { SetProperty(ref _capacityDetail, value); }
         }
 
-        private string _temperature = "-- °C";
         public string Temperature
         {
             get => _temperature;
             set { SetProperty(ref _temperature, value); }
         }
 
-        private int _chargeLimit = 100;
         public int ChargeLimit
         {
             get => _chargeLimit;
-            set 
-            { 
+            set
+            {
                 if (_chargeLimit != value)
                 {
-                    _chargeLimit = value; 
+                    _chargeLimit = value;
                     OnPropertyChanged();
                     AppSettingsStore.SaveChargeLimit(_chargeLimit);
                 }
             }
         }
 
-        private bool _isCharging;
         public bool IsCharging
         {
             get => _isCharging;
-            set 
+            set
             {
                 if (_isCharging != value)
                 {
@@ -266,14 +287,12 @@ namespace BatteryMonitor.ViewModels
             }
         }
 
-        private bool _isPinned = false;
         public bool IsPinned
         {
             get => _isPinned;
             set { SetProperty(ref _isPinned, value); }
         }
 
-        private bool _isSettingsOpen = false;
         public bool IsSettingsOpen
         {
             get => _isSettingsOpen;
@@ -290,19 +309,17 @@ namespace BatteryMonitor.ViewModels
             }
         }
 
-        private ImageSource? _trayIconSource;
         public ImageSource? TrayIconSource
         {
             get => _trayIconSource;
             set { SetProperty(ref _trayIconSource, value); }
         }
 
-        private void UpdateTrayIconIfNeeded(BatteryInfo data)
+        private void UpdateTrayIconIfNeeded(int iconBucket, bool chargingState)
         {
-            int iconBucket = GetIconBucket((int)data.Percent);
-            bool chargingState = data.IsCharging;
-
-            if (TrayIconSource != null && iconBucket == _lastIconBucket && chargingState == _lastIconChargingState)
+            if (TrayIconSource != null &&
+                iconBucket == _lastIconBucket &&
+                chargingState == _lastIconChargingState)
             {
                 return;
             }
@@ -319,5 +336,20 @@ namespace BatteryMonitor.ViewModels
 
             return (percent / 10) * 10;
         }
+
+        private sealed record BatterySnapshot(
+            string BatteryLevel,
+            bool IsCharging,
+            string MainStatusText,
+            string PowerRate,
+            string SubStatusText,
+            string Health,
+            string CycleCount,
+            string Voltage,
+            string RemainingTime,
+            string CapacityDetail,
+            string Temperature,
+            int TrayIconBucket,
+            bool TrayIconChargingState);
     }
 }

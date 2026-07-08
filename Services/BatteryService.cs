@@ -1,13 +1,21 @@
-﻿using System;
+using System;
 using System.Linq;
 using System.Management;
-using BatteryMonitor.Models;
+
 using BatteryMonitor.Helpers;
+using BatteryMonitor.Models;
 
 namespace BatteryMonitor.Services
 {
     public class BatteryService
     {
+        private const string Scope = @"root\WMI";
+        private const string BatteryStatusQuery = "SELECT Charging, Voltage, RemainingCapacity, ChargeRate, DischargeRate FROM BatteryStatus";
+        private const string BatteryStaticDataQuery = "SELECT DesignedCapacity FROM BatteryStaticData";
+        private const string BatteryFullChargedCapacityQuery = "SELECT FullChargedCapacity FROM BatteryFullChargedCapacity";
+        private const string BatteryCycleCountQuery = "SELECT CycleCount FROM BatteryCycleCount";
+        private const string ThermalZoneTemperatureQuery = "SELECT CurrentTemperature FROM MSAcpi_ThermalZoneTemperature";
+
         private bool _supportsTemperature = true;
         private uint? _cachedDesignCapacity;
         private uint _cachedFullChargedCapacity;
@@ -23,8 +31,7 @@ namespace BatteryMonitor.Services
 
             try
             {
-                // --- 必須のバッテリー情報 ---
-                using var status = QuerySingle(@"root\WMI", "SELECT * FROM BatteryStatus");
+                using var status = QuerySingle(Scope, BatteryStatusQuery);
 
                 if (status != null)
                 {
@@ -37,7 +44,7 @@ namespace BatteryMonitor.Services
 
                 if (!_cachedDesignCapacity.HasValue)
                 {
-                    using var staticData = QuerySingle(@"root\WMI", "SELECT * FROM BatteryStaticData");
+                    using var staticData = QuerySingle(Scope, BatteryStaticDataQuery);
                     if (staticData != null)
                     {
                         _cachedDesignCapacity = Convert.ToUInt32(staticData["DesignedCapacity"]);
@@ -47,7 +54,7 @@ namespace BatteryMonitor.Services
 
                 if (_cachedFullChargedCapacity == 0 || refreshFullChargedCapacity)
                 {
-                    using var fullCharge = QuerySingle(@"root\WMI", "SELECT * FROM BatteryFullChargedCapacity");
+                    using var fullCharge = QuerySingle(Scope, BatteryFullChargedCapacityQuery);
                     if (fullCharge != null)
                     {
                         _cachedFullChargedCapacity = Convert.ToUInt32(fullCharge["FullChargedCapacity"]);
@@ -62,17 +69,15 @@ namespace BatteryMonitor.Services
             }
             catch (ManagementException ex)
             {
-                // 主要なWMI情報が取得できなければ、ここで処理を中断
                 Logger.Error("Failed to get primary battery info", ex);
                 return info;
             }
 
-            // --- 補助情報: サイクルカウント ---
             if (refreshCycleCount)
             {
                 try
                 {
-                    using var cycleCountData = QuerySingle(@"root\WMI", "SELECT * FROM BatteryCycleCount");
+                    using var cycleCountData = QuerySingle(Scope, BatteryCycleCountQuery);
                     if (cycleCountData != null)
                     {
                         _cachedCycleCount = Convert.ToUInt32(cycleCountData["CycleCount"]);
@@ -85,16 +90,13 @@ namespace BatteryMonitor.Services
             }
             info.CycleCount = _cachedCycleCount;
 
-            // --- 補助情報: 温度 (管理者権限が必要) ---
             if (_supportsTemperature && refreshTemperature)
             {
                 try
                 {
-                    using var thermalData = QuerySingle(@"root\WMI", "SELECT * FROM MSAcpi_ThermalZoneTemperature");
+                    using var thermalData = QuerySingle(Scope, ThermalZoneTemperatureQuery);
                     if (thermalData != null)
                     {
-                        // 単位: 1/10 Kelvin
-                        // Celsius = (K - 273.15)
                         uint rawTemp = Convert.ToUInt32(thermalData["CurrentTemperature"]);
                         _cachedTemperature = (rawTemp / 10.0) - 273.15;
                     }
