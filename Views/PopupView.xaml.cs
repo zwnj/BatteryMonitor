@@ -25,6 +25,7 @@ namespace BatteryMonitor.Views
         private IntPtr _lastBackdropHandle = IntPtr.Zero;
         private ThemeType? _lastBackdropTheme;
         private bool _runtimeEventsHooked;
+        private bool _positionPreparedByController;
         public long OpenTraceId { get; set; }
 
         public PopupView()
@@ -45,6 +46,7 @@ namespace BatteryMonitor.Views
         {
             var sw = Stopwatch.StartNew();
             Logger.Info($"PopupView PrepareForOpen entered trace={OpenTraceId}");
+            _positionPreparedByController = true;
             ResetVisualState();
             Logger.Info($"PopupView PrepareForOpen ResetVisualState completed trace={OpenTraceId} elapsed={sw.ElapsedMilliseconds}ms");
             TransitionOverlay.BeginAnimation(Image.OpacityProperty, null);
@@ -192,8 +194,15 @@ namespace BatteryMonitor.Views
             Logger.Info($"PopupView Loaded trace={OpenTraceId}");
             ResetVisualState();
             Logger.Info($"PopupView Loaded ResetVisualState completed trace={OpenTraceId} elapsed={sw.ElapsedMilliseconds}ms");
-            ApplySavedPosition();
-            Logger.Info($"PopupView Loaded ApplySavedPosition completed trace={OpenTraceId} elapsed={sw.ElapsedMilliseconds}ms");
+            if (!_positionPreparedByController)
+            {
+                ApplySavedPosition();
+                Logger.Info($"PopupView Loaded ApplySavedPosition completed trace={OpenTraceId} elapsed={sw.ElapsedMilliseconds}ms");
+            }
+            else
+            {
+                Logger.Info($"PopupView Loaded skipped ApplySavedPosition trace={OpenTraceId} elapsed={sw.ElapsedMilliseconds}ms");
+            }
 
             // アクリル効果を適用
             if (PresentationSource.FromVisual(this) is HwndSource source)
@@ -207,6 +216,7 @@ namespace BatteryMonitor.Views
 
         private void PopupView_Unloaded(object sender, RoutedEventArgs e)
         {
+            _positionPreparedByController = false;
             UnhookRuntimeEvents();
         }
 
