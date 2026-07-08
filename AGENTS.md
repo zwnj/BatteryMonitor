@@ -46,6 +46,37 @@ dotnet build BatteryMonitor.sln
 
 必要なら、リファクタの方針が固まった段階でこのファイルを更新してよい。
 
+## Oracle 利用メモ
+
+- この環境では `oracle` のブラウザ実行は `--browser-manual-login` と `--browser-keep-browser` を前提にする。
+- モデル切り替え UI の検出で失敗することがあるため、ブラウザ実行では `--browser-model-strategy ignore` を優先する。
+- 会話を続けるときは `-s <slug>` でセッション名を固定し、`--followup <slug>` で再接続する。
+- 動作確認の最小例は次のとおり。
+
+```powershell
+oracle --engine browser --browser-manual-login --browser-keep-browser --browser-model-strategy ignore -s "codex browser check" -p "Respond with exactly OK"
+```
+
+### よく使う形
+
+初回:
+
+```powershell
+oracle --engine browser --browser-manual-login --browser-keep-browser --browser-model-strategy ignore -s "my-session" -p "最初の依頼"
+```
+
+続き:
+
+```powershell
+oracle --engine browser --browser-manual-login --browser-keep-browser --browser-model-strategy ignore --followup my-session -p "続きの依頼"
+```
+
+短い動作確認:
+
+```powershell
+oracle --engine browser --browser-manual-login --browser-keep-browser --browser-model-strategy ignore -s "oracle-smoke-test" -p "Respond with exactly OK"
+```
+
 ## 補足
 
 - 文字化けが見えたら、まず読み取り側のエンコーディングを疑う。

@@ -173,6 +173,9 @@ namespace BatteryMonitor
             {
                 _updateTimer.Interval = ForegroundUpdateInterval;
             }
+
+            // 検証用: ポップアップ表示後に詳細更新を1回だけ走らせる
+            _popupDetailRefreshTimer?.Start();
         }
 
         private void TrayPopup_Closed(object? sender, EventArgs e)
@@ -195,7 +198,8 @@ namespace BatteryMonitor
             _popupDetailRefreshTimer?.Stop();
             if (_batteryViewModel != null)
             {
-                _ = _batteryViewModel.UpdateData(true, true);
+                // 検証用: 開いた瞬間の強制詳細更新を避けて、後追いで反映する
+                _ = _batteryViewModel.UpdateData(true, false);
             }
         }
 
