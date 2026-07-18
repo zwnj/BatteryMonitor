@@ -19,7 +19,11 @@ namespace BatteryMonitor.Views
     /// </summary>
     public partial class PopupView : UserControl
     {
+        private const double DragStartThreshold = 4.0;
+
+        private bool _isDragPending;
         private bool _isDragging;
+        private Point _dragStartScreenPoint;
         private Point _lastScreenPoint;
         private Popup? _parentPopup;
         private IntPtr _lastBackdropHandle = IntPtr.Zero;
@@ -346,32 +350,52 @@ namespace BatteryMonitor.Views
         private void PopupView_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
         {
             Logger.Info($"PopupView MouseLeftButtonDown source={e.OriginalSource?.GetType().Name ?? "null"}");
-            // インタラクティブなコントロール（TextBox, Button等）の上でのクリックはドラッグを開始しない
-            if (IsInputEelement(e.OriginalSource as DependencyObject))
+            var originalSource = e.OriginalSource as DependencyObject;
+
+            // ヘッダー以外の通常操作と、ヘッダー内のボタン操作ではドラッグを開始しない。
+            if (!IsWithinDragHandle(originalSource) || IsInputEelement(originalSource))
             {
-                Logger.Info("PopupView MouseLeftButtonDown ignored because input element");
+                Logger.Info("PopupView MouseLeftButtonDown ignored because source is outside drag handle or interactive");
                 return;
             }
 
             _parentPopup ??= this.Parent as Popup;
             if (_parentPopup == null) return;
 
-            _isDragging = true;
             try
             {
                 // Win32 APIを使用して生のカーソル位置（スクリーン座標）を取得
                 NativeMethods.POINT p;
                 NativeMethods.GetCursorPos(out p);
+                _dragStartScreenPoint = p;
                 _lastScreenPoint = p;
-                
+
+                _isDragPending = true;
+                _isDragging = false;
                 this.CaptureMouse();
-                Logger.Info($"PopupView drag started at {_lastScreenPoint.X},{_lastScreenPoint.Y}");
+                Logger.Info($"PopupView drag pending at {_lastScreenPoint.X},{_lastScreenPoint.Y}");
             }
             catch (InvalidOperationException)
             {
+                _isDragPending = false;
                 _isDragging = false;
                 Logger.Info("PopupView drag start failed");
             }
+        }
+
+        private bool IsWithinDragHandle(DependencyObject? obj)
+        {
+            while (obj != null && obj != this)
+            {
+                if (obj == DragHandle)
+                {
+                    return true;
+                }
+
+                obj = VisualTreeHelper.GetParent(obj);
+            }
+
+            return false;
         }
 
         private bool IsInputEelement(DependencyObject? obj)
@@ -389,7 +413,7 @@ namespace BatteryMonitor.Views
 
         private void PopupView_MouseMove(object sender, MouseEventArgs e)
         {
-            if (_isDragging && _parentPopup != null)
+            if (_isDragPending && _parentPopup != null)
             {
                 try
                 {
@@ -397,6 +421,19 @@ namespace BatteryMonitor.Views
                     NativeMethods.POINT p;
                     NativeMethods.GetCursorPos(out p);
                     var currentScreenPoint = (Point)p;
+
+                    if (!_isDragging)
+                    {
+                        var dragDistance = currentScreenPoint - _dragStartScreenPoint;
+                        if (Math.Abs(dragDistance.X) < DragStartThreshold &&
+                            Math.Abs(dragDistance.Y) < DragStartThreshold)
+                        {
+                            return;
+                        }
+
+                        _isDragging = true;
+                        Logger.Info($"PopupView drag started at {_dragStartScreenPoint.X},{_dragStartScreenPoint.Y}");
+                    }
                     
                     var screenDelta = currentScreenPoint - _lastScreenPoint;
 
@@ -458,6 +495,7 @@ namespace BatteryMonitor.Views
                 catch (InvalidOperationException)
                 {
                     // ウィンドウが閉じられたりした場合の安全策
+                    _isDragPending = false;
                     _isDragging = false;
                     this.ReleaseMouseCapture();
                     Logger.Info("PopupView drag interrupted");
@@ -467,17 +505,22 @@ namespace BatteryMonitor.Views
 
         private void PopupView_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
         {
-            if (_isDragging)
+            if (_isDragPending)
             {
+                bool positionChanged = _isDragging;
+                _isDragPending = false;
                 _isDragging = false;
                 this.ReleaseMouseCapture();
-                Logger.Info("PopupView drag ended");
 
-                // ドラッグ終了時に位置を保存
-                if (_parentPopup != null)
+                if (positionChanged && _parentPopup != null)
                 {
+                    Logger.Info("PopupView drag ended");
                     AppSettingsStore.SaveWindowPosition(_parentPopup.HorizontalOffset, _parentPopup.VerticalOffset);
                     Logger.Info($"PopupView drag position saved left={_parentPopup.HorizontalOffset}, top={_parentPopup.VerticalOffset}");
+                }
+                else
+                {
+                    Logger.Info("PopupView header click completed without saving position");
                 }
             }
         }

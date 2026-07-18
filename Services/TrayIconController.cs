@@ -28,6 +28,14 @@ namespace BatteryMonitor.Services
             public int Y;
         }
 
+        private enum CloseReason
+        {
+            OutsideInteraction,
+            HoverLeave,
+            ShortcutToggle,
+            TrayIconToggle
+        }
+
         private readonly TaskbarIcon _notifyIcon;
         private readonly Func<bool> _isPinnedDelegate;
         private Popup? _trayPopup;
@@ -229,7 +237,7 @@ namespace BatteryMonitor.Services
                     }
 
                     Logger.Info("ShowTrayPopup closing popup");
-                    ClosePopupWithAnimation(popup);
+                    RequestClose(popup, CloseReason.ShortcutToggle);
                 }
                 else
                 {
@@ -270,25 +278,23 @@ namespace BatteryMonitor.Services
         private void MyNotifyIcon_TrayLeftMouseDown(object? sender, RoutedEventArgs e)
         {
             Logger.Info($"TrayLeftMouseDown entered. pinned={_isPinnedDelegate()}, sticky={_isStickyMode}, explicit={_isExplicitMode}");
+
+            if (_notifyIcon?.TrayPopupResolved is Popup openPopup &&
+                openPopup.IsOpen &&
+                (_isExplicitMode || _isStickyMode || _isPinnedDelegate()))
+            {
+                _showDelayTimer?.Stop();
+                Logger.Info("TrayLeftMouseDown closing explicitly opened popup");
+                RequestClose(openPopup, CloseReason.TrayIconToggle);
+                return;
+            }
+
             if (_isPinnedDelegate()) 
             {
                 if (_notifyIcon?.TrayPopupResolved is Popup p && !p.IsOpen)
                 {
                     Logger.Info("TrayLeftMouseDown requesting popup show (pinned)");
                     _notifyIcon.ShowTrayPopup();
-                }
-                else if (_notifyIcon?.TrayPopupResolved is Popup existingPopup)
-                {
-                     Logger.Info("TrayLeftMouseDown focusing existing pinned popup");
-                     // 既に開いている場合はフォーカスのみ行う
-                     if (existingPopup.Child is UIElement child)
-                     {
-                         if (PresentationSource.FromVisual(child) is System.Windows.Interop.HwndSource source)
-                         {
-                             SetForegroundWindow(source.Handle);
-                         }
-                         child.Focus();
-                     }
                 }
                 return;
             }
@@ -365,7 +371,7 @@ namespace BatteryMonitor.Services
 
         private void OnPopupClosed(object? sender, EventArgs e)
         {
-            Logger.Info("Popup closed");
+            Logger.Info($"Popup closed. closeAnimating={_isCloseAnimating}");
             _isStickyMode = false; // いかなる理由でもポップアップが閉じたらモードをリセット
             _isExplicitMode = false;
             _isCloseAnimating = false;
@@ -373,12 +379,19 @@ namespace BatteryMonitor.Services
 
             if (sender is Popup popup && popup.Child is PopupView view)
             {
+                view.IsHitTestVisible = true;
                 view.ResetVisualState();
             }
         }
 
         private void OnPopupOpened(object? sender, EventArgs e)
         {
+            if (sender is Popup popup)
+            {
+                Logger.Info("Popup opened. Reapplying saved position after Hardcodet placement");
+                ApplyPopupPosition(popup);
+            }
+
             _watchdogTimer?.Start();
         }
 
@@ -414,7 +427,7 @@ namespace BatteryMonitor.Services
                 if (!hasFocus && !isMouseOverPopup && !isMouseOverIcon)
                 {
                     Logger.Info("Watchdog closing explicit popup");
-                    ClosePopupWithAnimation(popup);
+                    RequestClose(popup, CloseReason.OutsideInteraction);
                 }
                 return;
             }
@@ -428,16 +441,8 @@ namespace BatteryMonitor.Services
                     Mouse.Capture(null);
                 }
                 
-                // アニメーションして閉じる
-                if (popup.Child is PopupView view)
-                {
-                    Logger.Info("Watchdog closing hover popup with animation");
-                    view.AnimateClose(() => _notifyIcon.CloseTrayPopup());
-                    return; 
-                }
-
-                Logger.Info("Watchdog closing hover popup immediately");
-                _notifyIcon.CloseTrayPopup();
+                Logger.Info("Watchdog closing hover popup");
+                RequestClose(popup, CloseReason.HoverLeave);
             }
         }
 
@@ -522,26 +527,101 @@ namespace BatteryMonitor.Services
             Logger.Info($"OpenExplicitPopup exit after {sw.ElapsedMilliseconds}ms");
         }
 
-        private void ClosePopupWithAnimation(Popup popup)
+        private void RequestClose(Popup popup, CloseReason reason)
         {
-            Logger.Info("ClosePopupWithAnimation entered");
-            popup.StaysOpen = false;
+            Logger.Info($"RequestClose entered. reason={reason}, isOpen={popup.IsOpen}, closeAnimating={_isCloseAnimating}, staysOpen={popup.StaysOpen}");
 
-            if (popup.Child is PopupView view)
+            if (!popup.IsOpen || _isCloseAnimating)
             {
-                _isCloseAnimating = true;
-                view.AnimateClose(() =>
-                {
-                    Logger.Info("ClosePopupWithAnimation animation completed");
-                    _isCloseAnimating = false;
-                    _notifyIcon.CloseTrayPopup();
-                });
+                Logger.Info($"RequestClose ignored. reason={reason}, isOpen={popup.IsOpen}, closeAnimating={_isCloseAnimating}");
                 return;
             }
 
+            if (_isPinnedDelegate() && reason is CloseReason.OutsideInteraction or CloseReason.HoverLeave)
+            {
+                Logger.Info($"RequestClose ignored because popup is pinned. reason={reason}");
+                return;
+            }
+
+            _isCloseAnimating = true;
+            _watchdogTimer?.Stop();
+
+            if (popup.Child is PopupView view)
+            {
+                view.IsHitTestVisible = false;
+
+                try
+                {
+                    view.AnimateClose(() => CompleteClose(popup, view, reason));
+                }
+                catch (Exception ex)
+                {
+                    Logger.Error($"RequestClose failed to start animation. reason={reason}", ex);
+                    RestoreAfterCloseFailure(popup, view, reason);
+                }
+
+                return;
+            }
+
+            Logger.Info($"RequestClose closing immediately because popup has no PopupView. reason={reason}");
+            CompleteClose(popup, null, reason);
+        }
+
+        private void CompleteClose(Popup popup, PopupView? view, CloseReason reason)
+        {
+            Logger.Info($"RequestClose animation completed. reason={reason}, isOpen={popup.IsOpen}, staysOpen={popup.StaysOpen}");
+
+            if (!_isCloseAnimating || !popup.IsOpen)
+            {
+                Logger.Info($"RequestClose completion ignored because popup was already closed. reason={reason}, closeAnimating={_isCloseAnimating}");
+                if (view != null)
+                {
+                    view.IsHitTestVisible = true;
+                }
+                return;
+            }
+
+            try
+            {
+                _notifyIcon.CloseTrayPopup();
+            }
+            catch (Exception ex)
+            {
+                Logger.Error($"RequestClose failed to close popup. reason={reason}", ex);
+                RestoreAfterCloseFailure(popup, view, reason);
+                return;
+            }
+
+            if (popup.IsOpen)
+            {
+                Logger.Info($"RequestClose did not close popup. reason={reason}");
+                RestoreAfterCloseFailure(popup, view, reason);
+                return;
+            }
+
+            if (view != null)
+            {
+                view.IsHitTestVisible = true;
+            }
+
             _isCloseAnimating = false;
-            Logger.Info("ClosePopupWithAnimation closing immediately");
-            _notifyIcon.CloseTrayPopup();
+        }
+
+        private void RestoreAfterCloseFailure(Popup popup, PopupView? view, CloseReason reason)
+        {
+            if (view != null)
+            {
+                view.IsHitTestVisible = true;
+                view.ResetVisualState();
+            }
+
+            _isCloseAnimating = false;
+
+            if (popup.IsOpen)
+            {
+                Logger.Info($"RequestClose restarting watchdog after failure. reason={reason}");
+                _watchdogTimer?.Start();
+            }
         }
 
         private void ApplyPopupPosition(Popup popup)
