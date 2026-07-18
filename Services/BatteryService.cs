@@ -10,7 +10,7 @@ namespace BatteryMonitor.Services
     public class BatteryService
     {
         private const string Scope = @"root\WMI";
-        private const string BatteryStatusQuery = "SELECT Charging, Voltage, RemainingCapacity, ChargeRate, DischargeRate FROM BatteryStatus";
+        private const string BatteryStatusQuery = "SELECT Charging, PowerOnline, Discharging, Voltage, RemainingCapacity, ChargeRate, DischargeRate FROM BatteryStatus";
         private const string BatteryStaticDataQuery = "SELECT DesignedCapacity FROM BatteryStaticData";
         private const string BatteryFullChargedCapacityQuery = "SELECT FullChargedCapacity FROM BatteryFullChargedCapacity";
         private const string BatteryCycleCountQuery = "SELECT CycleCount FROM BatteryCycleCount";
@@ -20,7 +20,7 @@ namespace BatteryMonitor.Services
         private uint? _cachedDesignCapacity;
         private uint _cachedFullChargedCapacity;
         private uint _cachedCycleCount;
-        private double _cachedTemperature = 0;
+        private double _cachedTemperature = double.NaN;
 
         public BatteryInfo GetBatteryStatus(
             bool refreshFullChargedCapacity = false,
@@ -36,6 +36,8 @@ namespace BatteryMonitor.Services
                 if (status != null)
                 {
                     info.IsCharging = (bool)status["Charging"];
+                    info.PowerOnline = status["PowerOnline"] != null && (bool)status["PowerOnline"];
+                    info.IsDischarging = status["Discharging"] != null && (bool)status["Discharging"];
                     info.Voltage = Convert.ToUInt32(status["Voltage"]);
                     info.RemainingCapacity = Convert.ToUInt32(status["RemainingCapacity"]);
                     info.ChargeRate = Convert.ToUInt32(status["ChargeRate"]);
@@ -105,7 +107,7 @@ namespace BatteryMonitor.Services
                 {
                     Logger.Error("Failed to get temperature (Disabling temperature check)", ex);
                     _supportsTemperature = false;
-                    _cachedTemperature = 0;
+                    _cachedTemperature = double.NaN;
                 }
             }
             info.Temperature = _cachedTemperature;

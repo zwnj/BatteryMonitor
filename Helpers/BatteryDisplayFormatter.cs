@@ -14,11 +14,26 @@ namespace BatteryMonitor.Helpers
             return isCharging ? "充電中" : "バッテリー使用中";
         }
 
+        public static string FormatMainStatus(BatteryInfo data)
+        {
+            if (data.IsCharging)
+            {
+                return "充電中";
+            }
+
+            if (data.PowerOnline)
+            {
+                return "AC接続中";
+            }
+
+            return "バッテリー使用中";
+        }
+
         public static string FormatPowerRate(BatteryInfo data, double powerW)
         {
             return (powerW > 0)
                 ? ((data.IsCharging ? "+" : "-") + $"{powerW:F1} W")
-                : "-- W";
+                : (data.PowerOnline ? "0.0 W" : "-- W");
         }
 
         public static string FormatSubStatus(BatteryInfo data, double powerW, double voltageV, double currentA)
@@ -28,6 +43,11 @@ namespace BatteryMonitor.Helpers
                 return (voltageV > 0 && currentA > 0)
                     ? $"{powerW:F1}W ({voltageV:F1}V / {currentA:F1}A)"
                     : $"{powerW:F1}W";
+            }
+
+            if (data.PowerOnline)
+            {
+                return "AC接続中";
             }
 
             return (powerW > 0) ? $"消費: {powerW:F1}W" : "待機中";
@@ -88,7 +108,7 @@ namespace BatteryMonitor.Helpers
 
         public static string FormatTemperature(double temperature)
         {
-            return (temperature > -270) ? $"{temperature:F1} °C" : "-- °C";
+            return (double.IsNaN(temperature) || temperature <= -270) ? "-- °C" : $"{temperature:F1} °C";
         }
 
         public static string FormatCapacityDetail(BatteryInfo data)

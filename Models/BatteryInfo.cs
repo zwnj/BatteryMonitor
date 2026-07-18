@@ -4,6 +4,8 @@
     public struct BatteryInfo
     {
         public bool IsCharging { get; set; }
+        public bool PowerOnline { get; set; }
+        public bool IsDischarging { get; set; }
         public uint ChargeRate { get; set; }
         public uint DischargeRate { get; set; }
         public uint Voltage { get; set; } // mV

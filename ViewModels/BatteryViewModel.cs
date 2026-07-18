@@ -75,16 +75,14 @@ namespace BatteryMonitor.ViewModels
 
         public Task UpdateData(bool isPopupVisible = false, bool forceSecondaryRefresh = false)
         {
-            if (!_updateGate.Wait(0))
-            {
-                return Task.CompletedTask;
-            }
-
             return UpdateDataCoreAsync(isPopupVisible, forceSecondaryRefresh);
         }
 
         private async Task UpdateDataCoreAsync(bool isPopupVisible, bool forceSecondaryRefresh)
         {
+            // 更新を捨てずに順番待ちにして、開いた直後の取りこぼしを防ぐ
+            await _updateGate.WaitAsync();
+
             try
             {
                 var now = DateTime.Now;
@@ -137,7 +135,7 @@ namespace BatteryMonitor.ViewModels
                     return new BatterySnapshot(
                         BatteryDisplayFormatter.FormatBatteryLevel(data),
                         data.IsCharging,
-                        BatteryDisplayFormatter.FormatMainStatus(data.IsCharging),
+                        BatteryDisplayFormatter.FormatMainStatus(data),
                         BatteryDisplayFormatter.FormatPowerRate(data, powerW),
                         BatteryDisplayFormatter.FormatSubStatus(data, powerW, voltageV, currentA),
                         BatteryDisplayFormatter.FormatHealth(data),
