@@ -1,11 +1,17 @@
 ﻿using System;
 using System.IO;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace BatteryMonitor.Models
 {
     public class AppSettings
     {
+        private static readonly JsonSerializerOptions JsonOptions = new()
+        {
+            NumberHandling = JsonNumberHandling.AllowNamedFloatingPointLiterals
+        };
+
         public double WindowLeft { get; set; } = double.NaN;
         public double WindowTop { get; set; } = double.NaN;
         public int ChargeLimit { get; set; } = 100;
@@ -26,7 +32,7 @@ namespace BatteryMonitor.Models
                     Directory.CreateDirectory(dir!);
                 }
                 
-                var json = JsonSerializer.Serialize(settings);
+                var json = JsonSerializer.Serialize(settings, JsonOptions);
                 File.WriteAllText(SettingsPath, json);
             }
             catch
@@ -42,7 +48,7 @@ namespace BatteryMonitor.Models
                 if (File.Exists(SettingsPath))
                 {
                     var json = File.ReadAllText(SettingsPath);
-                    return JsonSerializer.Deserialize<AppSettings>(json) ?? new AppSettings();
+                    return JsonSerializer.Deserialize<AppSettings>(json, JsonOptions) ?? new AppSettings();
                 }
             }
             catch
