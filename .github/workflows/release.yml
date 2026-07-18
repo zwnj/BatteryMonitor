@@ -95,7 +95,7 @@ jobs:
 
       - name: Pack release
         shell: pwsh
-        run: vpk pack -u BatteryMonitor -v ${{ steps.version.outputs.version }} -p publish
+        run: vpk pack -u BatteryMonitor -v ${{ steps.version.outputs.version }} -p publish --mainExe BatteryMonitor3.exe
 
       - name: Upload release to GitHub Releases
         shell: pwsh
