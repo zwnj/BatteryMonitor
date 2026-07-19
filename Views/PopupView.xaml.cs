@@ -11,6 +11,7 @@ using System.Diagnostics;
 using BatteryMonitor.Services;
 using BatteryMonitor.Helpers;
 using BatteryMonitor.Models;
+using BatteryMonitor.ViewModels;
 
 namespace BatteryMonitor.Views
 {
@@ -35,6 +36,7 @@ namespace BatteryMonitor.Views
         public PopupView()
         {
             InitializeComponent();
+            DataObject.AddPastingHandler(ChargeLimitTextBox, ChargeLimitTextBox_OnPaste);
             this.Loaded += PopupView_Loaded;
             this.Unloaded += PopupView_Unloaded;
             this.MouseLeftButtonDown += PopupView_MouseLeftButtonDown;
@@ -134,6 +136,11 @@ namespace BatteryMonitor.Views
             }
             catch { /* アクセスエラーは無視 */ }
 
+            if (SystemParameters.HighContrast)
+            {
+                isTransparencyEnabled = false;
+            }
+
             // 2. 電源状態を確認 (省電力モード / バッテリー節約機能の簡易チェック)
             // 注: SystemParameters.PowerLineStatus はバッテリー節約機能そのものではないが、目安として使用。
             if (SystemParameters.PowerLineStatus == PowerLineStatus.Offline)
@@ -141,8 +148,6 @@ namespace BatteryMonitor.Views
                 // バッテリー駆動時は、透明効果が無効化されている可能性があるため安全策をとる
                 // ユーザー設定で「バッテリー節約機能」がオンの場合などはOS側で透明効果が切れる
                 
-                // ハイコントラストモードの場合は無効
-                if (SystemParameters.HighContrast) isTransparencyEnabled = false;
             }
 
             if (!isTransparencyEnabled)
@@ -216,6 +221,59 @@ namespace BatteryMonitor.Views
             }
 
             Logger.Info($"PopupView Loaded exit trace={OpenTraceId} elapsed={sw.ElapsedMilliseconds}ms");
+        }
+
+        private void PopupView_PreviewKeyDown(object sender, KeyEventArgs e)
+        {
+            if (e.Key != Key.Escape)
+            {
+                return;
+            }
+
+            if (DataContext is BatteryViewModel viewModel && viewModel.IsSettingsOpen)
+            {
+                viewModel.IsSettingsOpen = false;
+                e.Handled = true;
+                return;
+            }
+
+            _parentPopup ??= Parent as Popup;
+            if (_parentPopup?.IsOpen == true)
+            {
+                _parentPopup.IsOpen = false;
+                e.Handled = true;
+            }
+        }
+
+        private void ChargeLimitTextBox_PreviewTextInput(object sender, TextCompositionEventArgs e)
+        {
+            foreach (char character in e.Text)
+            {
+                if (!char.IsDigit(character))
+                {
+                    e.Handled = true;
+                    return;
+                }
+            }
+        }
+
+        private void ChargeLimitTextBox_OnPaste(object sender, DataObjectPastingEventArgs e)
+        {
+            if (!e.SourceDataObject.GetDataPresent(DataFormats.UnicodeText) ||
+                e.SourceDataObject.GetData(DataFormats.UnicodeText) is not string text)
+            {
+                e.CancelCommand();
+                return;
+            }
+
+            foreach (char character in text)
+            {
+                if (!char.IsDigit(character))
+                {
+                    e.CancelCommand();
+                    return;
+                }
+            }
         }
 
         private void PopupView_Unloaded(object sender, RoutedEventArgs e)
@@ -308,39 +366,19 @@ namespace BatteryMonitor.Views
 
             if (_parentPopup != null)
             {
-                // Screen Edgeでのワープ（自動位置補正）を防ぐために Absolute に設定
-                _parentPopup.Placement = PlacementMode.Absolute;
-
                 // 保存された位置を読み込んで適用
                 var loadSw = Stopwatch.StartNew();
                 var (windowLeft, windowTop, hasValue) = AppSettingsStore.LoadWindowPosition();
                 Logger.Info($"PopupView loaded settings trace={OpenTraceId} elapsed={loadSw.ElapsedMilliseconds}ms");
                 if (hasValue)
                 {
-                    _parentPopup.HorizontalOffset = windowLeft;
-                    _parentPopup.VerticalOffset = windowTop;
+                    PopupPlacementHelper.Apply(_parentPopup, windowLeft, windowTop);
                     Logger.Info($"PopupView using saved position left={windowLeft}, top={windowTop}, trace={OpenTraceId}");
                 }
                 else
                 {
-                    // 初回表示時（保存値がない場合）はマウス位置に表示
-                    // Placement=Absoluteにしたため、手動で座標を設定する必要がある
-                    if (NativeMethods.GetCursorPos(out var p))
-                    {
-                        var sourceSw = Stopwatch.StartNew();
-                        var initialSource = PresentationSource.FromVisual(this);
-                        if (initialSource?.CompositionTarget != null)
-                        {
-                            var matrix = initialSource.CompositionTarget.TransformFromDevice;
-                            var logicalPos = matrix.Transform(new Point(p.X, p.Y));
-                            
-                            // カーソルの少し右下に表示、あるいは中央揃え
-                            // ここではカーソル位置を左上とする（必要に応じて調整）
-                            _parentPopup.HorizontalOffset = logicalPos.X;
-                            _parentPopup.VerticalOffset = logicalPos.Y;
-                            Logger.Info($"PopupView using cursor position left={logicalPos.X}, top={logicalPos.Y}, trace={OpenTraceId}, sourceElapsed={sourceSw.ElapsedMilliseconds}ms");
-                        }
-                    }
+                    PopupPlacementHelper.Apply(_parentPopup);
+                    Logger.Info($"PopupView using fallback position left={_parentPopup.HorizontalOffset}, top={_parentPopup.VerticalOffset}, trace={OpenTraceId}");
                 }
             }
 

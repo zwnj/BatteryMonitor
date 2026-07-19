@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
@@ -59,7 +59,7 @@ namespace BatteryMonitor.ViewModels
             string iconDirectory = System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Images", "TrayIconsIco");
             _iconGenerator = new SvgIconGenerator(iconDirectory);
 
-            _chargeLimit = AppSettingsStore.LoadChargeLimit();
+            _chargeLimit = ClampChargeLimit(AppSettingsStore.LoadChargeLimit());
             TogglePinCommand = new RelayCommand(_ => IsPinned = !IsPinned);
             ToggleSettingsCommand = new RelayCommand(_ => IsSettingsOpen = !IsSettingsOpen);
         }
@@ -103,26 +103,6 @@ namespace BatteryMonitor.ViewModels
                     refreshSecondary = true;
                 }
 
-                if (refreshFullChargedCapacity)
-                {
-                    _lastFullChargedCapacityRefresh = now;
-                }
-
-                if (refreshTemperature)
-                {
-                    _lastTemperatureRefresh = now;
-                }
-
-                if (refreshCycleCount)
-                {
-                    _lastCycleCountRefresh = now;
-                }
-
-                if (refreshSecondary && isPopupVisible)
-                {
-                    _lastSecondaryRefresh = now;
-                }
-
                 int chargeLimit = ChargeLimit;
                 var snapshot = await Task.Run(() =>
                 {
@@ -143,17 +123,48 @@ namespace BatteryMonitor.ViewModels
                         BatteryDisplayFormatter.FormatVoltage(voltageV),
                         BatteryDisplayFormatter.FormatRemainingTime(data, chargeLimit),
                         BatteryDisplayFormatter.FormatCapacityDetail(data),
-                        BatteryDisplayFormatter.FormatTemperature(data.Temperature),
+                        data.IsAvailable ? BatteryDisplayFormatter.FormatTemperature(data.Temperature) : "-- °C",
                         GetIconBucket((int)data.Percent),
-                        data.IsCharging);
+                        data.IsCharging,
+                        data.Availability);
                 });
+
+                if (snapshot.Availability == BatteryAvailability.Available)
+                {
+                    if (refreshFullChargedCapacity)
+                    {
+                        _lastFullChargedCapacityRefresh = now;
+                    }
+
+                    if (refreshTemperature)
+                    {
+                        _lastTemperatureRefresh = now;
+                    }
+
+                    if (refreshCycleCount)
+                    {
+                        _lastCycleCountRefresh = now;
+                    }
+
+                    if (refreshSecondary && isPopupVisible)
+                    {
+                        _lastSecondaryRefresh = now;
+                    }
+                }
 
                 BatteryLevel = snapshot.BatteryLevel;
                 IsCharging = snapshot.IsCharging;
                 MainStatusText = snapshot.MainStatusText;
                 PowerRate = snapshot.PowerRate;
                 SubStatusText = snapshot.SubStatusText;
-                UpdateTrayIconIfNeeded(snapshot.TrayIconBucket, snapshot.TrayIconChargingState);
+                if (snapshot.Availability == BatteryAvailability.Available)
+                {
+                    UpdateTrayIconIfNeeded(snapshot.TrayIconBucket, snapshot.TrayIconChargingState);
+                }
+                else if (TrayIconSource == null)
+                {
+                    TrayIconSource = _iconGenerator.GenerateFallbackIcon();
+                }
 
                 if (!isPopupVisible || !refreshSecondary)
                 {
@@ -261,11 +272,16 @@ namespace BatteryMonitor.ViewModels
             get => _chargeLimit;
             set
             {
-                if (_chargeLimit != value)
+                int validatedValue = ClampChargeLimit(value);
+                if (_chargeLimit != validatedValue)
                 {
-                    _chargeLimit = value;
+                    _chargeLimit = validatedValue;
                     OnPropertyChanged();
                     AppSettingsStore.SaveChargeLimit(_chargeLimit);
+                }
+                else if (value != validatedValue)
+                {
+                    OnPropertyChanged();
                 }
             }
         }
@@ -301,7 +317,12 @@ namespace BatteryMonitor.ViewModels
             get => StartupManager.IsStartupEnabled();
             set
             {
-                StartupManager.SetStartup(value);
+                if (!StartupManager.TrySetStartup(value))
+                {
+                    OnPropertyChanged();
+                    return;
+                }
+
                 OnPropertyChanged();
             }
         }
@@ -334,6 +355,11 @@ namespace BatteryMonitor.ViewModels
             return (percent / 10) * 10;
         }
 
+        private static int ClampChargeLimit(int value)
+        {
+            return Math.Clamp(value, 1, 100);
+        }
+
         private sealed record BatterySnapshot(
             string BatteryLevel,
             bool IsCharging,
@@ -347,6 +373,7 @@ namespace BatteryMonitor.ViewModels
             string CapacityDetail,
             string Temperature,
             int TrayIconBucket,
-            bool TrayIconChargingState);
+            bool TrayIconChargingState,
+            BatteryAvailability Availability);
     }
 }

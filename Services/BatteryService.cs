@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Linq;
 using System.Management;
 
@@ -27,29 +27,37 @@ namespace BatteryMonitor.Services
             bool refreshCycleCount = false,
             bool refreshTemperature = false)
         {
-            var info = new BatteryInfo();
+            var info = new BatteryInfo
+            {
+                Availability = BatteryAvailability.Error,
+                Temperature = double.NaN
+            };
 
             try
             {
                 using var status = QuerySingle(Scope, BatteryStatusQuery);
 
-                if (status != null)
+                if (status == null)
                 {
-                    info.IsCharging = (bool)status["Charging"];
-                    info.PowerOnline = status["PowerOnline"] != null && (bool)status["PowerOnline"];
-                    info.IsDischarging = status["Discharging"] != null && (bool)status["Discharging"];
-                    info.Voltage = Convert.ToUInt32(status["Voltage"]);
-                    info.RemainingCapacity = Convert.ToUInt32(status["RemainingCapacity"]);
-                    info.ChargeRate = Convert.ToUInt32(status["ChargeRate"]);
-                    info.DischargeRate = Convert.ToUInt32(status["DischargeRate"]);
+                    info.Availability = BatteryAvailability.NotPresent;
+                    return info;
                 }
+
+                info.Availability = BatteryAvailability.Available;
+                info.IsCharging = ReadBoolean(status, "Charging");
+                info.PowerOnline = ReadBoolean(status, "PowerOnline");
+                info.IsDischarging = ReadBoolean(status, "Discharging");
+                info.Voltage = ReadUInt32(status, "Voltage");
+                info.RemainingCapacity = ReadUInt32(status, "RemainingCapacity");
+                info.ChargeRate = ReadUInt32(status, "ChargeRate");
+                info.DischargeRate = ReadUInt32(status, "DischargeRate");
 
                 if (!_cachedDesignCapacity.HasValue)
                 {
                     using var staticData = QuerySingle(Scope, BatteryStaticDataQuery);
                     if (staticData != null)
                     {
-                        _cachedDesignCapacity = Convert.ToUInt32(staticData["DesignedCapacity"]);
+                        _cachedDesignCapacity = ReadUInt32(staticData, "DesignedCapacity");
                     }
                 }
                 info.DesignCapacity = _cachedDesignCapacity ?? 0;
@@ -59,7 +67,7 @@ namespace BatteryMonitor.Services
                     using var fullCharge = QuerySingle(Scope, BatteryFullChargedCapacityQuery);
                     if (fullCharge != null)
                     {
-                        _cachedFullChargedCapacity = Convert.ToUInt32(fullCharge["FullChargedCapacity"]);
+                        _cachedFullChargedCapacity = ReadUInt32(fullCharge, "FullChargedCapacity");
                     }
                 }
                 info.FullChargedCapacity = _cachedFullChargedCapacity;
@@ -69,9 +77,10 @@ namespace BatteryMonitor.Services
                     info.Percent = (uint)Math.Min(100, (100.0 * info.RemainingCapacity / info.FullChargedCapacity));
                 }
             }
-            catch (ManagementException ex)
+            catch (Exception ex) when (ex is ManagementException or InvalidCastException or FormatException or OverflowException)
             {
                 Logger.Error("Failed to get primary battery info", ex);
+                info.Availability = BatteryAvailability.Error;
                 return info;
             }
 
@@ -82,7 +91,7 @@ namespace BatteryMonitor.Services
                     using var cycleCountData = QuerySingle(Scope, BatteryCycleCountQuery);
                     if (cycleCountData != null)
                     {
-                        _cachedCycleCount = Convert.ToUInt32(cycleCountData["CycleCount"]);
+                        _cachedCycleCount = ReadUInt32(cycleCountData, "CycleCount");
                     }
                 }
                 catch (ManagementException ex)
@@ -99,7 +108,7 @@ namespace BatteryMonitor.Services
                     using var thermalData = QuerySingle(Scope, ThermalZoneTemperatureQuery);
                     if (thermalData != null)
                     {
-                        uint rawTemp = Convert.ToUInt32(thermalData["CurrentTemperature"]);
+                        uint rawTemp = ReadUInt32(thermalData, "CurrentTemperature");
                         _cachedTemperature = (rawTemp / 10.0) - 273.15;
                     }
                 }
@@ -120,6 +129,44 @@ namespace BatteryMonitor.Services
             using var searcher = new ManagementObjectSearcher(scope, query);
             using var results = searcher.Get();
             return results.Cast<ManagementObject>().FirstOrDefault();
+        }
+
+        private static bool ReadBoolean(ManagementBaseObject source, string propertyName)
+        {
+            object? value = source[propertyName];
+            if (value == null || value == DBNull.Value)
+            {
+                return false;
+            }
+
+            try
+            {
+                return Convert.ToBoolean(value);
+            }
+            catch (Exception ex) when (ex is InvalidCastException or FormatException)
+            {
+                Logger.Error($"Invalid WMI boolean value: {propertyName}", ex);
+                return false;
+            }
+        }
+
+        private static uint ReadUInt32(ManagementBaseObject source, string propertyName)
+        {
+            object? value = source[propertyName];
+            if (value == null || value == DBNull.Value)
+            {
+                return 0;
+            }
+
+            try
+            {
+                return Convert.ToUInt32(value);
+            }
+            catch (Exception ex) when (ex is InvalidCastException or FormatException or OverflowException)
+            {
+                Logger.Error($"Invalid WMI numeric value: {propertyName}", ex);
+                return 0;
+            }
         }
     }
 }

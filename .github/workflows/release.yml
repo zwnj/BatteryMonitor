@@ -31,20 +31,28 @@ jobs:
       - name: Determine release version
         id: version
         uses: actions/github-script@v7
+        env:
+          REQUESTED_VERSION: ${{ inputs.version || '' }}
         with:
           script: |
-            const requestedVersion = `${{ inputs.version || '' }}`.trim();
+            const requestedVersion = `${process.env.REQUESTED_VERSION || ''}`.trim();
             const ref = `${context.ref || ''}`;
+            const setVersion = (version) => {
+              if (!/^\d+\.\d+\.\d+$/.test(version)) {
+                throw new Error(`Version "${version}" is not a valid semantic version`);
+              }
+              core.setOutput('version', version);
+            };
 
             if (context.eventName === 'push' && ref.startsWith('refs/tags/')) {
               const version = ref.replace(/^refs\/tags\/v?/i, '');
-              core.setOutput('version', version);
+              setVersion(version);
               core.info(`Using tag version ${version}`);
               return;
             }
 
             if (requestedVersion) {
-              core.setOutput('version', requestedVersion);
+              setVersion(requestedVersion);
               core.info(`Using requested version ${requestedVersion}`);
               return;
             }
@@ -66,12 +74,12 @@ jobs:
               const patch = Number(match[3]);
               const version = `${major}.${minor}.${patch + 1}`;
 
-              core.setOutput('version', version);
+              setVersion(version);
               core.info(`Auto-bumped version from ${latestTag} to ${version}`);
             } catch (error) {
               if (error?.status === 404) {
                 const version = "1.0.2";
-                core.setOutput('version', version);
+                setVersion(version);
                 core.info(`No published release found. Falling back to ${version}`);
                 return;
               }
@@ -80,7 +88,10 @@ jobs:
             }
 
       - name: Restore dependencies
-        run: dotnet restore BatteryMonitor3.csproj
+        run: dotnet restore BatteryMonitor.sln
+
+      - name: Run tests
+        run: dotnet test BatteryMonitor.sln -c Release --no-restore
 
       - name: Publish application
         run: dotnet publish BatteryMonitor3.csproj -c Release -r win-x64 --self-contained false -o publish -p:Version=${{ steps.version.outputs.version }} -p:AssemblyVersion=${{ steps.version.outputs.version }}.0 -p:FileVersion=${{ steps.version.outputs.version }}.0 -p:InformationalVersion=${{ steps.version.outputs.version }}

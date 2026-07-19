@@ -627,44 +627,16 @@ namespace BatteryMonitor.Services
         private void ApplyPopupPosition(Popup popup)
         {
             Logger.Info("ApplyPopupPosition entered");
-            popup.Placement = PlacementMode.Absolute;
-
             var (windowLeft, windowTop, hasValue) = AppSettingsStore.LoadWindowPosition();
             if (hasValue)
             {
-                popup.HorizontalOffset = windowLeft;
-                popup.VerticalOffset = windowTop;
+                PopupPlacementHelper.Apply(popup, windowLeft, windowTop);
                 Logger.Info($"ApplyPopupPosition using saved position left={windowLeft}, top={windowTop}");
                 return;
             }
 
-            if (!GetCursorPos(out Win32Point pt))
-            {
-                Logger.Info("ApplyPopupPosition could not read cursor position");
-                return;
-            }
-
-            if (popup.Child is not UIElement child)
-            {
-                popup.HorizontalOffset = pt.X;
-                popup.VerticalOffset = pt.Y;
-                Logger.Info($"ApplyPopupPosition using raw cursor position x={pt.X}, y={pt.Y}");
-                return;
-            }
-
-            var source = PresentationSource.FromVisual(child);
-            if (source?.CompositionTarget == null)
-            {
-                popup.HorizontalOffset = pt.X;
-                popup.VerticalOffset = pt.Y;
-                Logger.Info($"ApplyPopupPosition using raw cursor position (no source) x={pt.X}, y={pt.Y}");
-                return;
-            }
-
-            var logicalPos = source.CompositionTarget.TransformFromDevice.Transform(new Point(pt.X, pt.Y));
-            popup.HorizontalOffset = logicalPos.X;
-            popup.VerticalOffset = logicalPos.Y;
-            Logger.Info($"ApplyPopupPosition using logical cursor position x={logicalPos.X}, y={logicalPos.Y}");
+            PopupPlacementHelper.Apply(popup);
+            Logger.Info($"ApplyPopupPosition using fallback position x={popup.HorizontalOffset}, y={popup.VerticalOffset}");
         }
     }
 }

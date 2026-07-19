@@ -1,7 +1,7 @@
 ﻿using System;
+using System.ComponentModel;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
-using System.Windows.Input;
 using BatteryMonitor.Helpers;
 
 namespace BatteryMonitor.Services.Keyboard
@@ -9,7 +9,7 @@ namespace BatteryMonitor.Services.Keyboard
     public class KeyboardHookService : IDisposable
     {
         // イベント定義
-        public event EventHandler TriggerActivated;
+        public event EventHandler? TriggerActivated;
 
         private const int WH_KEYBOARD_LL = 13;
         private const int WM_KEYDOWN = 0x0100;
@@ -25,8 +25,9 @@ namespace BatteryMonitor.Services.Keyboard
         private const int TIMEOUT_MS = 600;
         private const int ACTIVATION_COOLDOWN_MS = 500;
 
-        private static LowLevelKeyboardProc _proc;
-        private static IntPtr _hookID = IntPtr.Zero;
+        private readonly LowLevelKeyboardProc _proc;
+        private IntPtr _hookId;
+        private bool _disposed;
 
         // 状態管理
         private int _pressCount = 0;
@@ -37,14 +38,23 @@ namespace BatteryMonitor.Services.Keyboard
         public KeyboardHookService()
         {
             _proc = HookCallback;
-            _hookID = SetHook(_proc);
+            _hookId = SetHook(_proc);
+            if (_hookId == IntPtr.Zero)
+            {
+                throw new Win32Exception(Marshal.GetLastWin32Error(), "キーボードフックを登録できませんでした。");
+            }
         }
 
-        private IntPtr SetHook(LowLevelKeyboardProc proc)
+        private static IntPtr SetHook(LowLevelKeyboardProc proc)
         {
             using (Process curProcess = Process.GetCurrentProcess())
-            using (ProcessModule curModule = curProcess.MainModule)
             {
+                ProcessModule? curModule = curProcess.MainModule;
+                if (curModule == null)
+                {
+                    throw new InvalidOperationException("現在のプロセスのモジュールを取得できませんでした。");
+                }
+
                 return SetWindowsHookEx(WH_KEYBOARD_LL, proc,
                     GetModuleHandle(curModule.ModuleName), 0);
             }
@@ -63,14 +73,12 @@ namespace BatteryMonitor.Services.Keyboard
                     if (!_isRightShiftDown)
                     {
                         _isRightShiftDown = true;
-                        Logger.Info("KeyboardHookService detected right shift down");
                         OnRightShiftPressed();
                     }
                 }
                 else
                 {
                     // 右Shift以外のキーが押されたらリセット
-                    Logger.Info($"KeyboardHookService reset by other key vk={vkCode}");
                     ResetCount();
                 }
             }
@@ -83,7 +91,7 @@ namespace BatteryMonitor.Services.Keyboard
                 }
             }
 
-            return CallNextHookEx(_hookID, nCode, wParam, lParam);
+            return CallNextHookEx(_hookId, nCode, wParam, lParam);
         }
 
         private void OnRightShiftPressed()
@@ -101,12 +109,10 @@ namespace BatteryMonitor.Services.Keyboard
             if ((now - _lastPressTime).TotalMilliseconds > TIMEOUT_MS)
             {
                 _pressCount = 1;
-                Logger.Info("KeyboardHookService press count reset to 1");
             }
             else
             {
                 _pressCount++;
-                Logger.Info($"KeyboardHookService press count incremented to {_pressCount}");
             }
 
             _lastPressTime = now;
@@ -125,12 +131,27 @@ namespace BatteryMonitor.Services.Keyboard
         {
             _pressCount = 0;
             _lastPressTime = DateTime.MinValue;
-            Logger.Info("KeyboardHookService count reset");
         }
 
         public void Dispose()
         {
-            UnhookWindowsHookEx(_hookID);
+            if (_disposed)
+            {
+                return;
+            }
+
+            _disposed = true;
+            if (_hookId != IntPtr.Zero)
+            {
+                if (!UnhookWindowsHookEx(_hookId))
+                {
+                    Logger.Error($"キーボードフックを解除できませんでした。Win32Error={Marshal.GetLastWin32Error()}");
+                }
+
+                _hookId = IntPtr.Zero;
+            }
+
+            GC.SuppressFinalize(this);
         }
 
         // --- P/Invoke 定義 ---
@@ -147,6 +168,6 @@ namespace BatteryMonitor.Services.Keyboard
             IntPtr wParam, IntPtr lParam);
 
         [DllImport("kernel32.dll", CharSet = CharSet.Auto, SetLastError = true)]
-        private static extern IntPtr GetModuleHandle(string lpModuleName);
+        private static extern IntPtr GetModuleHandle(string? lpModuleName);
     }
 }

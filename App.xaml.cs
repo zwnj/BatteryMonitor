@@ -144,6 +144,7 @@ namespace BatteryMonitor
             _keyboardHookService?.Dispose();
             base.OnExit(e);
             Logger.Info("Application Exit");
+            Logger.Shutdown();
         }
 
         private void Exit_Click(object? sender, RoutedEventArgs e)

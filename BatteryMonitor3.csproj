@@ -23,4 +23,10 @@
     </None>
   </ItemGroup>
 
+  <ItemGroup>
+    <Compile Remove="BatteryMonitor3.Tests\**\*.cs" />
+    <EmbeddedResource Remove="BatteryMonitor3.Tests\**\*" />
+    <None Remove="BatteryMonitor3.Tests\**\*" />
+  </ItemGroup>
+
 </Project>

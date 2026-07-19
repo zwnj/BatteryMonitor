@@ -1,8 +1,17 @@
 ﻿namespace BatteryMonitor.Models
 {
+    public enum BatteryAvailability
+    {
+        Error,
+        Available,
+        NotPresent,
+    }
+
     // アプリ内データ受け渡し用
     public struct BatteryInfo
     {
+        public BatteryAvailability Availability { get; set; }
+        public bool IsAvailable => Availability == BatteryAvailability.Available;
         public bool IsCharging { get; set; }
         public bool PowerOnline { get; set; }
         public bool IsDischarging { get; set; }

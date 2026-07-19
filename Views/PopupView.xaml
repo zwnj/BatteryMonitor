@@ -7,6 +7,7 @@
              xmlns:helpers="clr-namespace:BatteryMonitor.Helpers"
              mc:Ignorable="d" 
              Focusable="True"
+             PreviewKeyDown="PopupView_PreviewKeyDown"
              d:DesignHeight="450" d:DesignWidth="320">
     <Grid>
         <Border x:Name="MainBorder" Background="{DynamicResource WindowBackgroundBrush}" CornerRadius="12" BorderBrush="{DynamicResource WindowBorderBrush}" BorderThickness="1"
@@ -98,11 +99,11 @@
                     <Grid x:Name="DragHandle" Grid.Row="0" Margin="0,0,0,20" Background="Transparent">
                         <TextBlock Text="Battery Monitor" Foreground="{DynamicResource SecondaryTextBrush}" FontSize="14" VerticalAlignment="Center"/>
                         <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
-                            <ToggleButton IsChecked="{Binding IsPinned, Mode=TwoWay}"
+                            <ToggleButton x:Name="PinToggle" IsChecked="{Binding IsPinned, Mode=TwoWay}"
                                           Background="Transparent" BorderBrush="Transparent"
-                                          Margin="0,0,10,0"
-                                          Focusable="False"
-                                          IsTabStop="False">
+                                          Margin="0,0,10,0" Width="30" Height="30"
+                                          ToolTip="ポップアップを固定"
+                                          AutomationProperties.Name="ポップアップを固定">
                                 <ToggleButton.Template>
                                     <ControlTemplate TargetType="ToggleButton">
                                         <Grid Background="Transparent">
@@ -128,9 +129,9 @@
                                     </ControlTemplate>
                                 </ToggleButton.Template>
                             </ToggleButton>
-                            <ToggleButton x:Name="ThemeToggle" Background="Transparent" BorderBrush="Transparent" Click="OnThemeToggleClick" Margin="10,0,0,0" Width="46" Height="24"
-                                          Focusable="False"
-                                          IsTabStop="False">
+                            <ToggleButton x:Name="ThemeToggle" Background="Transparent" BorderBrush="Transparent" Click="OnThemeToggleClick" Margin="10,0,0,0" Width="46" Height="30"
+                                          ToolTip="表示テーマを切り替え"
+                                          AutomationProperties.Name="表示テーマを切り替え">
                                 <ToggleButton.Template>
                                     <ControlTemplate TargetType="ToggleButton">
                                         <Grid>
@@ -182,8 +183,7 @@
                                 </ToggleButton.Template>
                             </ToggleButton>
                             <Button Command="{Binding ToggleSettingsCommand}" Background="Transparent" BorderBrush="Transparent" Margin="5,0,0,0" Width="30" Height="30" ToolTip="設定"
-                                    Focusable="False"
-                                    IsTabStop="False">
+                                    AutomationProperties.Name="設定を開く">
                                 <TextBlock Text="⚙" FontSize="18" Foreground="{DynamicResource IconDefaultBrush}" VerticalAlignment="Center" HorizontalAlignment="Center"/>
                                 <Button.Template>
                                     <ControlTemplate TargetType="Button">
@@ -312,7 +312,7 @@
 
                             <TextBlock Text="充電上限 (いたわり充電)" Foreground="{DynamicResource SecondaryTextBrush}" Margin="0,0,0,5"/>
                             <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
-                                <TextBox Text="{Binding ChargeLimit, UpdateSourceTrigger=PropertyChanged}" Width="60" FontSize="16" TextAlignment="Center" Background="{DynamicResource CardBackgroundBrush}" Foreground="{DynamicResource PrimaryTextBrush}" BorderBrush="{DynamicResource WindowBorderBrush}" Padding="5"/>
+                                <TextBox x:Name="ChargeLimitTextBox" Text="{Binding ChargeLimit, UpdateSourceTrigger=LostFocus}" Width="60" FontSize="16" TextAlignment="Center" Background="{DynamicResource CardBackgroundBrush}" Foreground="{DynamicResource PrimaryTextBrush}" BorderBrush="{DynamicResource WindowBorderBrush}" Padding="5" MaxLength="3" PreviewTextInput="ChargeLimitTextBox_PreviewTextInput" AutomationProperties.Name="充電上限パーセント"/>
                                 <TextBlock Text="%" Foreground="{DynamicResource PrimaryTextBrush}" FontSize="16" VerticalAlignment="Center" Margin="5,0,0,0"/>
                             </StackPanel>
                             <TextBlock Text="※設定値まで充電されるまでの時間を計算します" Foreground="{DynamicResource TertiaryTextBrush}" FontSize="11" Margin="0,5,0,0"/>

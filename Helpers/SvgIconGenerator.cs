@@ -20,7 +20,7 @@ namespace BatteryMonitor.Helpers
             }
         }
 
-        public ImageSource GenerateIcon(int batteryPercentage, bool? isCharging = null)
+        public ImageSource? GenerateIcon(int batteryPercentage, bool? isCharging = null)
         {
             int normalizedPercentage = NormalizePercentage(batteryPercentage);
             int colorBand = GetColorBand(batteryPercentage);
@@ -46,6 +46,18 @@ namespace BatteryMonitor.Helpers
             var icon = LoadBitmap(iconPath);
             _iconCacheByBand[cacheKey] = icon;
             return icon;
+        }
+
+        public ImageSource? GenerateFallbackIcon()
+        {
+            string iconPath = Path.Combine(_iconDirectory, "battery_0.ico");
+            if (!File.Exists(iconPath))
+            {
+                Logger.Error($"フォールバック用トレイアイコンが見つかりません: {iconPath}");
+                return null;
+            }
+
+            return LoadBitmap(iconPath);
         }
 
         private static int NormalizePercentage(int batteryPercentage)

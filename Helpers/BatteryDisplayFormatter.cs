@@ -6,7 +6,7 @@ namespace BatteryMonitor.Helpers
     {
         public static string FormatBatteryLevel(BatteryInfo data)
         {
-            return $"{data.Percent}";
+            return data.IsAvailable ? $"{data.Percent}" : "--";
         }
 
         public static string FormatMainStatus(bool isCharging)
@@ -16,6 +16,13 @@ namespace BatteryMonitor.Helpers
 
         public static string FormatMainStatus(BatteryInfo data)
         {
+            if (!data.IsAvailable)
+            {
+                return data.Availability == BatteryAvailability.NotPresent
+                    ? "バッテリーなし"
+                    : "取得できません";
+            }
+
             if (data.IsCharging)
             {
                 return "充電中";
@@ -31,6 +38,11 @@ namespace BatteryMonitor.Helpers
 
         public static string FormatPowerRate(BatteryInfo data, double powerW)
         {
+            if (!data.IsAvailable)
+            {
+                return "-- W";
+            }
+
             return (powerW > 0)
                 ? ((data.IsCharging ? "+" : "-") + $"{powerW:F1} W")
                 : (data.PowerOnline ? "0.0 W" : "-- W");
@@ -38,6 +50,11 @@ namespace BatteryMonitor.Helpers
 
         public static string FormatSubStatus(BatteryInfo data, double powerW, double voltageV, double currentA)
         {
+            if (!data.IsAvailable)
+            {
+                return "---";
+            }
+
             if (data.IsCharging)
             {
                 return (voltageV > 0 && currentA > 0)
@@ -55,6 +72,11 @@ namespace BatteryMonitor.Helpers
 
         public static string FormatHealth(BatteryInfo data)
         {
+            if (!data.IsAvailable)
+            {
+                return "-- %";
+            }
+
             if (data.DesignCapacity > 0 && data.FullChargedCapacity > 0)
             {
                 var health = System.Math.Min(100.0, (double)data.FullChargedCapacity * 100 / data.DesignCapacity);
@@ -66,7 +88,7 @@ namespace BatteryMonitor.Helpers
 
         public static string FormatCycleCount(BatteryInfo data)
         {
-            return (data.CycleCount > 0) ? $"{data.CycleCount} 回" : "-- 回";
+            return data.IsAvailable && data.CycleCount > 0 ? $"{data.CycleCount} 回" : "-- 回";
         }
 
         public static string FormatVoltage(double voltageV)
@@ -76,6 +98,11 @@ namespace BatteryMonitor.Helpers
 
         public static string FormatRemainingTime(BatteryInfo data, int chargeLimit)
         {
+            if (!data.IsAvailable)
+            {
+                return "-- 時間 -- 分";
+            }
+
             if (data.IsCharging)
             {
                 if (data.ChargeRate <= 0)
@@ -92,15 +119,13 @@ namespace BatteryMonitor.Helpers
                 }
 
                 double hoursLeft = neededCapacity / data.ChargeRate;
-                var ts = System.TimeSpan.FromHours(hoursLeft);
-                return $"あと {ts.Hours}時間 {ts.Minutes}分 ({chargeLimit}%まで)";
+                return FormatDuration(hoursLeft, $" ({chargeLimit}%まで)");
             }
 
             if (data.DischargeRate > 0)
             {
                 double hoursLeft = (double)data.RemainingCapacity / data.DischargeRate;
-                var ts = System.TimeSpan.FromHours(hoursLeft);
-                return $"あと {ts.Hours}時間 {ts.Minutes}分";
+                return FormatDuration(hoursLeft);
             }
 
             return "-- 時間 -- 分";
@@ -113,9 +138,27 @@ namespace BatteryMonitor.Helpers
 
         public static string FormatCapacityDetail(BatteryInfo data)
         {
+            if (!data.IsAvailable)
+            {
+                return "-- / -- Wh";
+            }
+
             double remWh = data.RemainingCapacity / 1000.0;
             double fullWh = data.FullChargedCapacity / 1000.0;
             return $"{remWh:F1} / {fullWh:F1} Wh";
+        }
+
+        private static string FormatDuration(double hours, string suffix = "")
+        {
+            if (double.IsNaN(hours) || double.IsInfinity(hours) || hours < 0)
+            {
+                return "-- 時間 -- 分";
+            }
+
+            long totalMinutes = (long)System.Math.Floor(hours * 60);
+            long totalHours = totalMinutes / 60;
+            long minutes = totalMinutes % 60;
+            return $"あと {totalHours}時間 {minutes}分{suffix}";
         }
     }
 }

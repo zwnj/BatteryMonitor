@@ -1,7 +1,10 @@
 ﻿using System;
 using System.IO;
+using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+
+using BatteryMonitor.Helpers;
 
 namespace BatteryMonitor.Models
 {
@@ -9,7 +12,8 @@ namespace BatteryMonitor.Models
     {
         private static readonly JsonSerializerOptions JsonOptions = new()
         {
-            NumberHandling = JsonNumberHandling.AllowNamedFloatingPointLiterals
+            NumberHandling = JsonNumberHandling.AllowNamedFloatingPointLiterals,
+            WriteIndented = true
         };
 
         public double WindowLeft { get; set; } = double.NaN;
@@ -23,6 +27,7 @@ namespace BatteryMonitor.Models
 
         public static void Save(double left, double top, int chargeLimit)
         {
+            string? tempPath = null;
             try
             {
                 var settings = new AppSettings { WindowLeft = left, WindowTop = top, ChargeLimit = chargeLimit };
@@ -33,11 +38,35 @@ namespace BatteryMonitor.Models
                 }
                 
                 var json = JsonSerializer.Serialize(settings, JsonOptions);
-                File.WriteAllText(SettingsPath, json);
+                tempPath = SettingsPath + ".tmp";
+                File.WriteAllText(tempPath, json, new UTF8Encoding(encoderShouldEmitUTF8Identifier: false));
+
+                if (File.Exists(SettingsPath))
+                {
+                    File.Replace(tempPath, SettingsPath, destinationBackupFileName: null, ignoreMetadataErrors: true);
+                }
+                else
+                {
+                    File.Move(tempPath, SettingsPath);
+                }
             }
-            catch
+            catch (Exception ex)
             {
-                // エラーは無視（本番環境ではログ出力を推奨）
+                Logger.Error("Failed to save application settings", ex);
+            }
+            finally
+            {
+                if (tempPath != null && File.Exists(tempPath))
+                {
+                    try
+                    {
+                        File.Delete(tempPath);
+                    }
+                    catch (Exception ex)
+                    {
+                        Logger.Error("Failed to remove temporary settings file", ex);
+                    }
+                }
             }
         }
 
@@ -51,11 +80,34 @@ namespace BatteryMonitor.Models
                     return JsonSerializer.Deserialize<AppSettings>(json, JsonOptions) ?? new AppSettings();
                 }
             }
-            catch
+            catch (JsonException ex)
             {
-                // 読み込みエラー時はデフォルトを返す
+                Logger.Error("Application settings are corrupted; defaults will be used", ex);
+                BackupCorruptedSettings();
+            }
+            catch (Exception ex)
+            {
+                Logger.Error("Failed to load application settings; defaults will be used", ex);
             }
             return new AppSettings();
+        }
+
+        private static void BackupCorruptedSettings()
+        {
+            try
+            {
+                if (!File.Exists(SettingsPath))
+                {
+                    return;
+                }
+
+                string backupPath = $"{SettingsPath}.corrupt-{DateTime.Now:yyyyMMddHHmmss}";
+                File.Move(SettingsPath, backupPath, overwrite: true);
+            }
+            catch (Exception ex)
+            {
+                Logger.Error("Failed to preserve corrupted settings file", ex);
+            }
         }
     }
 }

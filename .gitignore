@@ -37,6 +37,9 @@ project.assets.json
 *.dotcover
 *.resharper
 _ReSharper*/
+.devspace/
+.oracle/
+*.diagsession
 
 # Ignore JetBrains Rider files
 *.sln.iml
