@@ -12,6 +12,8 @@
   - GitHub Releases と Velopack の運用を確認したいときに読む
 - [トラブルシューティング](./troubleshooting.md)
   - 既知の詰まりどころや確認手順を見たいときに読む
+- [Velopack 更新・スタートアップ ADR](./adr/0001-velopack-update-and-startup.md)
+  - 更新ライフサイクル、自動起動、旧方式からの移行判断を確認したいときに読む
 
 ## 実装方針とレビュー
 

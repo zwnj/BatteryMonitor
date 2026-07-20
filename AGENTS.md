@@ -16,7 +16,7 @@
 - 画面の主役はメインウィンドウではなく、トレイアイコンとポップアップ。
 - バッテリー情報は WMI から取得している。
 - 設定は `%LOCALAPPDATA%\BatteryMonitor\settings.json` に保存している。
-- 自動起動は `schtasks` を使って管理している。
+- 自動起動は Velopack インストール版だけを現在ユーザーの Run キーへ登録し、Task Manager の「スタートアップ アプリ」で管理する。
 
 ## 主要な責務
 

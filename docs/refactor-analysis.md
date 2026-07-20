@@ -22,7 +22,7 @@
 
 - `UpdateData` が更新頻度判定、WMI 呼び出し、表示文字列生成、トレイアイコン更新まで担当している
 - `ChargeLimit` の setter が設定保存を直接行っている
-- `IsStartupEnabled` の getter / setter が `StartupManager` に直結している
+- 自動起動は ViewModel から分離済みで、Task Manager の「スタートアップ アプリ」を制御面としている
 
 該当箇所:
 
