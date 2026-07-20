@@ -248,6 +248,30 @@ namespace BatteryMonitor.Services
             Logger.Info($"ShowTrayPopup exit after {sw.ElapsedMilliseconds}ms");
         }
 
+        public void ActivatePrimaryInstance()
+        {
+            if (_notifyIcon.TrayPopupResolved is not Popup popup)
+            {
+                return;
+            }
+
+            if (!popup.IsOpen)
+            {
+                OpenExplicitPopup(popup);
+                return;
+            }
+
+            if (popup.Child is UIElement child)
+            {
+                if (PresentationSource.FromVisual(child) is System.Windows.Interop.HwndSource source)
+                {
+                    _ = TryActivatePopupWindow(source.Handle) || ForceForegroundWindow(source.Handle);
+                }
+
+                child.Focus();
+            }
+        }
+
         private void MyNotifyIcon_TrayMouseMove(object? sender, RoutedEventArgs e)
         {
             // コンテキストメニューが開いている場合はホバー処理を開始しない

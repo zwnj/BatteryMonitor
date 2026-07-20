@@ -8,6 +8,7 @@ using System.Windows.Threading;
 using System.Windows.Media;
 
 using BatteryMonitor.Helpers;
+using BatteryMonitor.Infrastructure.Startup;
 using BatteryMonitor.Services;
 using BatteryMonitor.Services.Keyboard;
 using BatteryMonitor.Updates;
@@ -32,6 +33,7 @@ namespace BatteryMonitor
         private DispatcherTimer? _updateTimer;
         private DispatcherTimer? _popupDetailRefreshTimer;
         private DispatcherTimer? _startupUpdateTimer;
+        private SingleInstanceCoordinator? _singleInstanceCoordinator;
         private bool _runtimeResourcesReleased;
 
         protected override void OnStartup(StartupEventArgs e)
@@ -50,6 +52,26 @@ namespace BatteryMonitor
 
             base.OnStartup(e);
             ShutdownMode = ShutdownMode.OnExplicitShutdown;
+
+            bool isStartupLaunch = ApplicationLaunchModeCalculator.IsStartupLaunch(e.Args);
+            _singleInstanceCoordinator = new SingleInstanceCoordinator(
+                Dispatcher,
+                () => _trayIconController?.ActivatePrimaryInstance());
+            ApplicationLaunchDecision launchDecision = ApplicationLaunchDecision.Calculate(
+                _singleInstanceCoordinator.IsPrimaryInstance,
+                isStartupLaunch);
+            if (!launchDecision.ShouldContinueStartup)
+            {
+                if (launchDecision.ShouldNotifyPrimary)
+                {
+                    _singleInstanceCoordinator.NotifyPrimaryInstance();
+                }
+
+                Shutdown();
+                return;
+            }
+
+            _ = StartupIntegration.TryEnsureRegisteredAndMigrate();
             _notifyIcon = (TaskbarIcon)FindResource("MyNotifyIcon");
             if (_notifyIcon == null) return;
 
@@ -131,6 +153,7 @@ namespace BatteryMonitor
         protected override void OnExit(ExitEventArgs e)
         {
             ReleaseRuntimeResources();
+            _singleInstanceCoordinator?.Dispose();
             base.OnExit(e);
             Logger.Info("Application Exit");
             Logger.Shutdown();

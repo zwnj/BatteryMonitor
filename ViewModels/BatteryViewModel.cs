@@ -330,21 +330,6 @@ namespace BatteryMonitor.ViewModels
             set { SetProperty(ref _isSettingsOpen, value); }
         }
 
-        public bool IsStartupEnabled
-        {
-            get => StartupManager.IsStartupEnabled();
-            set
-            {
-                if (!StartupManager.TrySetStartup(value))
-                {
-                    OnPropertyChanged();
-                    return;
-                }
-
-                OnPropertyChanged();
-            }
-        }
-
         public ImageSource? TrayIconSource
         {
             get => _trayIconSource;
