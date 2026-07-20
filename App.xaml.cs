@@ -10,8 +10,8 @@ using System.Windows.Media;
 using BatteryMonitor.Helpers;
 using BatteryMonitor.Services;
 using BatteryMonitor.Services.Keyboard;
+using BatteryMonitor.Updates;
 using BatteryMonitor.ViewModels;
-using Velopack;
 
 namespace BatteryMonitor
 {
@@ -26,16 +26,13 @@ namespace BatteryMonitor
         private BatteryViewModel? _batteryViewModel;
         private TrayIconController? _trayIconController;
         private KeyboardHookService? _keyboardHookService;
-        private UpdateService? _updateService;
+        private IApplicationUpdateService? _updateService;
+        private ApplicationUpdateWorkflow? _updateWorkflow;
+        private readonly UpdateOperationState _updateOperationState = new();
         private DispatcherTimer? _updateTimer;
         private DispatcherTimer? _popupDetailRefreshTimer;
         private DispatcherTimer? _startupUpdateTimer;
-
-        public App()
-        {
-            VelopackApp.Build().Run();
-            InitializeComponent();
-        }
+        private bool _runtimeResourcesReleased;
 
         protected override void OnStartup(StartupEventArgs e)
         {
@@ -58,8 +55,11 @@ namespace BatteryMonitor
 
             _batteryViewModel = new BatteryViewModel();
             _notifyIcon.DataContext = _batteryViewModel;
-            _updateService = new UpdateService(UpdateRepositoryUrl);
-            _batteryViewModel.VersionText = _updateService.GetCurrentVersionText();
+            _updateService = new VelopackApplicationUpdateService(UpdateRepositoryUrl);
+            _updateWorkflow = new ApplicationUpdateWorkflow(
+                _updateService,
+                PrepareForUpdateRestartAsync);
+            _batteryViewModel.VersionText = _updateService.CurrentVersionText;
 
             if (_notifyIcon.TrayPopup is FrameworkElement popupContent)
             {
@@ -130,18 +130,7 @@ namespace BatteryMonitor
         
         protected override void OnExit(ExitEventArgs e)
         {
-            Microsoft.Win32.SystemEvents.PowerModeChanged -= OnPowerModeChanged;
-            if (_notifyIcon?.TrayPopupResolved is Popup popup)
-            {
-                popup.Opened -= TrayPopup_Opened;
-                popup.Closed -= TrayPopup_Closed;
-            }
-            _updateTimer?.Stop();
-            _popupDetailRefreshTimer?.Stop();
-            _startupUpdateTimer?.Stop();
-            _notifyIcon?.Dispose();
-            _trayIconController?.Dispose();
-            _keyboardHookService?.Dispose();
+            ReleaseRuntimeResources();
             base.OnExit(e);
             Logger.Info("Application Exit");
             Logger.Shutdown();
@@ -154,13 +143,75 @@ namespace BatteryMonitor
 
         private async void CheckUpdates_Click(object? sender, RoutedEventArgs e)
         {
-            if (_updateService == null)
+            if (_updateWorkflow == null || !_updateOperationState.TryBegin(out long operationId))
             {
-                Logger.Info("Manual update check skipped: update service is not initialized");
+                Logger.Info("Manual update check skipped: updater is unavailable or busy");
                 return;
             }
 
-            await _updateService.CheckPromptAndApplyAsync();
+            if (sender is MenuItem menuItem)
+            {
+                menuItem.IsEnabled = false;
+            }
+
+            try
+            {
+                ApplicationUpdateCheckResult result = await _updateWorkflow.CheckAsync();
+                if (!result.IsInstalled)
+                {
+                    ShowUpdateMessage(
+                        "インストール版として起動したときにのみ更新できます。",
+                        MessageBoxImage.Information);
+                    return;
+                }
+
+                if (!result.IsUpdateAvailable)
+                {
+                    Logger.Info("Manual update check: no updates available");
+                    ShowUpdateMessage("最新バージョンです。", MessageBoxImage.Information);
+                    return;
+                }
+
+                string version = result.AvailableVersion ?? "不明";
+                Logger.Info($"Manual update check: update available {version}");
+                MessageBoxResult approval = MessageBox.Show(
+                    $"更新版 {version} が見つかりました。ダウンロードして再起動しますか？",
+                    "更新",
+                    MessageBoxButton.YesNo,
+                    MessageBoxImage.Question);
+                if (approval != MessageBoxResult.Yes)
+                {
+                    Logger.Info("Manual update check: user canceled");
+                    return;
+                }
+
+                Progress<int> progress = new(value =>
+                {
+                    if (_updateOperationState.TryReportProgress(operationId, value))
+                    {
+                        Logger.Info($"Update download progress: {value}%");
+                    }
+                });
+                await _updateWorkflow.DownloadPrepareAndRestartAsync(progress);
+            }
+            catch (Exception ex)
+            {
+                Logger.Error("Manual update flow failed", ex);
+                ShowUpdateMessage($"更新に失敗しました。\n{ex.Message}", MessageBoxImage.Error);
+
+                if (_runtimeResourcesReleased)
+                {
+                    Shutdown();
+                }
+            }
+            finally
+            {
+                _updateOperationState.Complete(operationId);
+                if (sender is MenuItem completedMenuItem && !_runtimeResourcesReleased)
+                {
+                    completedMenuItem.IsEnabled = true;
+                }
+            }
         }
 
         private void OnPowerModeChanged(object sender, Microsoft.Win32.PowerModeChangedEventArgs e)
@@ -207,13 +258,87 @@ namespace BatteryMonitor
         private async void StartupUpdateTimer_Tick(object? sender, EventArgs e)
         {
             _startupUpdateTimer?.Stop();
-            if (_updateService == null)
+            if (_updateWorkflow == null || !_updateOperationState.TryBegin(out long operationId))
             {
-                Logger.Info("Startup update check skipped: update service is not initialized");
+                Logger.Info("Startup update check skipped: updater is unavailable or busy");
                 return;
             }
 
-            await _updateService.CheckForUpdatesSilentlyAsync();
+            try
+            {
+                ApplicationUpdateCheckResult result = await _updateWorkflow.CheckAsync();
+                if (!result.IsInstalled)
+                {
+                    Logger.Info("Startup update check skipped: app is not installed");
+                    return;
+                }
+
+                if (!result.IsUpdateAvailable)
+                {
+                    Logger.Info("Startup update check: no updates available");
+                    return;
+                }
+
+                Logger.Info($"Startup update check: available version {result.AvailableVersion}");
+            }
+            catch (Exception ex)
+            {
+                Logger.Error("Startup update check failed", ex);
+            }
+            finally
+            {
+                _updateOperationState.Complete(operationId);
+            }
+        }
+
+        private async Task PrepareForUpdateRestartAsync()
+        {
+            Logger.Info("Preparing application resources for update restart");
+            _updateTimer?.Stop();
+            _popupDetailRefreshTimer?.Stop();
+            _startupUpdateTimer?.Stop();
+
+            if (_batteryViewModel != null)
+            {
+                await _batteryViewModel.StopUpdatesAsync();
+            }
+
+            ReleaseRuntimeResources();
+        }
+
+        private void ReleaseRuntimeResources()
+        {
+            if (_runtimeResourcesReleased)
+            {
+                return;
+            }
+
+            _runtimeResourcesReleased = true;
+            Microsoft.Win32.SystemEvents.PowerModeChanged -= OnPowerModeChanged;
+
+            if (_batteryViewModel != null)
+            {
+                _batteryViewModel.PropertyChanged -= ViewModel_PropertyChanged;
+            }
+
+            if (_notifyIcon?.TrayPopupResolved is Popup popup)
+            {
+                popup.Opened -= TrayPopup_Opened;
+                popup.Closed -= TrayPopup_Closed;
+                popup.IsOpen = false;
+            }
+
+            _updateTimer?.Stop();
+            _popupDetailRefreshTimer?.Stop();
+            _startupUpdateTimer?.Stop();
+            _trayIconController?.Dispose();
+            _keyboardHookService?.Dispose();
+            _notifyIcon?.Dispose();
+        }
+
+        private static void ShowUpdateMessage(string message, MessageBoxImage image)
+        {
+            MessageBox.Show(message, "更新", MessageBoxButton.OK, image);
         }
     }
 }

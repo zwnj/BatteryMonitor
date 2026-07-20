@@ -31,6 +31,7 @@ namespace BatteryMonitor.ViewModels
         private DateTime _lastCycleCountRefresh = DateTime.MinValue;
         private DateTime _lastSecondaryRefresh = DateTime.MinValue;
         private bool _hasLoadedVisibleDetails = false;
+        private bool _updatesStopped;
         private int _lastIconBucket = -1;
         private bool? _lastIconChargingState;
 
@@ -80,11 +81,21 @@ namespace BatteryMonitor.ViewModels
 
         private async Task UpdateDataCoreAsync(bool isPopupVisible, bool forceSecondaryRefresh)
         {
+            if (_updatesStopped)
+            {
+                return;
+            }
+
             // 更新を捨てずに順番待ちにして、開いた直後の取りこぼしを防ぐ
             await _updateGate.WaitAsync();
 
             try
             {
+                if (_updatesStopped)
+                {
+                    return;
+                }
+
                 var now = DateTime.Now;
                 var secondaryInterval = isPopupVisible ? VisibleSecondaryRefreshInterval : HiddenSecondaryRefreshInterval;
                 bool refreshFullChargedCapacity = now - _lastFullChargedCapacityRefresh >= FullChargedCapacityRefreshInterval;
@@ -188,6 +199,13 @@ namespace BatteryMonitor.ViewModels
             {
                 _updateGate.Release();
             }
+        }
+
+        internal async Task StopUpdatesAsync()
+        {
+            _updatesStopped = true;
+            await _updateGate.WaitAsync();
+            _updateGate.Release();
         }
 
         private void OnPropertyChanged([CallerMemberName] string? name = null)
