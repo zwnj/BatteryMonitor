@@ -1,4 +1,4 @@
-# User-specific files
+﻿# User-specific files
 *.user
 *.suo
 *.sln.docstates
@@ -46,6 +46,10 @@ _ReSharper*/
 
 # Runtime output
 debug.log
+
+# Release packaging output
+/artifacts/
+/publish/
 
 # Local generated icon scratch space
 Images/TrayIcons/
