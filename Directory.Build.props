@@ -1,10 +1,11 @@
-<Project>
+﻿<Project>
   <PropertyGroup>
     <!-- ローカルビルド用の既定値。Release workflow では入力値または自動採番値で上書きする -->
-    <AppVersion>1.0.8</AppVersion>
+    <AppVersion>1.0.9</AppVersion>
     <Version>$(AppVersion)</Version>
     <AssemblyVersion>$(AppVersion).0</AssemblyVersion>
     <FileVersion>$(AppVersion).0</FileVersion>
     <InformationalVersion>$(AppVersion)</InformationalVersion>
+    <IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
   </PropertyGroup>
 </Project>

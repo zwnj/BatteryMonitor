@@ -6,6 +6,11 @@ BatteryMonitor は、Windows のシステムトレイに常駐して、必要な
 
 ## 使う人向け
 
+### インストール
+
+[GitHub Releases](https://github.com/zwnj/BatteryMonitor/releases) の最新安定版から `BatteryMonitor-win-Setup.exe` をダウンロードして実行します。
+インストーラーは現在コード署名されていないため、Windows SmartScreenが警告を表示する場合があります。
+
 ### このアプリでできること
 
 BatteryMonitor は、バッテリー残量や充放電レートをシステムトレイからすばやく確認するためのアプリです。ポップアップでは、残量、充放電レート、電圧、推定残り時間、詳細容量、温度、健康度などをまとめて確認できます。テーマ切り替え、ピン留め表示、Windows 起動時の自動実行、充電上限の設定にも対応しています。
